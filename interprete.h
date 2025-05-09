@@ -31,6 +31,8 @@ void createTable(const QString& tableName, const QString& columns);
 void dropTable(const QString& tableName);
 void insertInto(const QString& tableName, const QString& values);
 void selectFrom(const QString& tableName);
+void selectAdvanced(const QString& command);
+void selectAdvancedInternal(const QString& query, QStringList& result);
 void deleteFrom(const QString& tableName, const QString& condition);
 }
 
