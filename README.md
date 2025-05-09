@@ -1,1 +1,2 @@
 # projectDBMS
+这边git pull以后要注意，在本地新增一个Resource文件夹，然后将interprete.cpp里开头的路径更改为你自己的Resource路径
