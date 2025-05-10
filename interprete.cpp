@@ -74,19 +74,27 @@ bool ensureDirExists(const QString& path) {
 namespace User {
 bool signup(const QString& username, const QString& password) {
     QFile file(Utils::userFile);
-    if (!file.open(QIODevice::ReadWrite | QIODevice::Text))
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return false;
+
     QTextStream in(&file);
     while (!in.atEnd()) {
         QString line = in.readLine();
         QStringList parts = line.split(',');
         if (parts.size() >= 2 && parts[0] == username) {
             Utils::print("用户已存在");
+            file.close();
             return false; // 用户已存在
         }
     }
+    file.close(); // 读完关闭，再以写入模式打开
+
+    if (!file.open(QIODevice::Append | QIODevice::Text)) // Append 模式更安全
+        return false;
+
     QTextStream out(&file);
     out << username << "," << password << "\n";
+    file.close();
     return true;
 }
 
