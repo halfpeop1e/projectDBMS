@@ -5,6 +5,7 @@ class function
 {
 public:
     function();
+    void welcome();
 };
-void welcome();
+
 #endif // FUNCTION_H

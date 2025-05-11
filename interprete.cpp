@@ -11,15 +11,16 @@
 #include <QtGlobal>
 #include "mainwindow.h"
 // 全局变量
-QString currentUser;
+QString currentUser="guest";
+Auth::Role currentRole;
 QString usingDatabase;
 QTextBrowser *showinShell = nullptr;
 // 工具函数区:
 extern MainWindow *mainWindow;
 namespace Utils {
-QString dbRoot = "E:/dbms/Resource";             // 所有数据库存放路径
-QString userFile = "E:/dbms/Resource/users.txt"; // 用户信息存储文件
-QString logFile = "E:/dbms/Resource/log.txt";    // 日志文件
+QString dbRoot = "/Users/fengzhu/Resource";             // 所有数据库存放路径
+QString userFile = "/Users/fengzhu/Resource"; // 用户信息存储文件
+QString logFile = "/Users/fengzhu/Resource";    // 日志文件
 void setOutputShell(QTextBrowser *shell)
 {
     showinShell = shell;
@@ -52,16 +53,19 @@ QStringList splitCommand(const QString &command)
 void showHelp()
 {
     QTextStream cout(stdout);
-    print("========Commands========\n");
-    print("REGISTER username password\n");
-    print("LOGIN username password\n");
-    print("CREATE DATABASE dbname\n");
-    print("DROP DATABASE dbname\n");
+    print( "========Commands========\n");
+    print("GRANT username role  (ADMIN only)\n");
+    print("ROLES 展示可赋予的权限\n");
+    print("SHOWME 展示当前用户以及权限\n");
+    print ("REGISTER username password\n");
+    print ("LOGIN username password\n");
+    print ("CREATE DATABASE dbname\n");
+    print ("DROP DATABASE dbname\n");
     print("USE dbname\n");
     print("CREATE TABLE tablename (col1 type1,col2 type2,...)\n");
     print("DROP TABLE tablename\n");
-    print("INSERT INTO tablename VALUES (val1,val2,...)\n");
-    print("SELECT * FROM tablename\n");
+    print ("INSERT INTO tablename VALUES (val1,val2,...)\n");
+    print("SELECT col1,col2.... FROM tablename WHERE ...\n");
     print("DELETE FROM tablename WHERE col=value\n");
     print("ALTER TABLE tablename ADD/DROP/MODIFY columnname (type);\n");
     print("EXIT / QUIT\n\n");
@@ -158,10 +162,28 @@ QString getDefaultValue(const QString &type) {
 }
 } // namespace Utils
 
+namespace Session {
+QString currentUser;
+Auth::Role currentRole;
+void setCurrentUser(const QString& user,Auth::Role role) {
+    currentUser = user;
+    currentRole = role;
+}
+
+
+Auth::Role getCurrentRole(){
+    return currentRole;
+}
+QString getCurrentUser(){
+    return currentUser;
+}
+}
 // 用户模块
 namespace User {
-bool signup(const QString &username, const QString &password)
-{
+
+bool signup(const QString& username, const QString& password) {
+    const QString& role = "normal";
+
     QFile file(Utils::userFile);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return false;
@@ -182,7 +204,7 @@ bool signup(const QString &username, const QString &password)
         return false;
 
     QTextStream out(&file);
-    out << username << "," << password << "\n";
+    out << username << "," << password << "," << role << "\n";
     file.close();
     QString path=Utils::dbRoot+"/"+username;
     QDir().mkpath(path);
@@ -209,25 +231,78 @@ bool login(QString &user, QString &username1, QString &password1)
         QStringList parts = line.split(',');
         if (parts.size() >= 2 && parts[0] == username && parts[1] == password) {
             user = username;
+            QString roleStr = parts[2].trimmed().toLower();
+            Auth::Role role = Auth::ROLE_MAP.value(parts[2].trimmed(), Auth::NORMAL);
+            qDebug() << "登录用户角色:" << roleStr << "映射为:" << role;
+
+            Session::setCurrentUser(user, role);
             return true;
         }
     }
     return false;
 }
+bool grantRole(const QString& adminUser, const QString& username, const QString& role) {
+    // 检查权限
+    if (Session::getCurrentUser() != adminUser ||
+        !Auth::checkPermission(Auth::ADMIN)) {
+        Utils::print("[!] 拒绝访问. 仅 ADMIN 能够进行授权.\n");
+        return false;
+    }
+
+    // 验证角色有效性
+    if (!Auth::ROLE_MAP.contains(role)) {
+        Utils::print("[!] 非法的角色格式. 权限角色: guest, normal, admin\n");
+        return false;
+    }
+
+    // 打开用户文件
+    QFile file(Utils::userFile);
+    if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        Utils::print("[!] 打开用户数据失败.\n");
+        return false;
+    }
+
+    // 读取并修改用户数据
+    QStringList lines;
+    QTextStream in(&file);
+    bool found = false;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList parts = line.split(',');
+        if (parts.size() >= 3 && parts[0] == username) {
+            parts[2] = role;
+            line = parts.join(",");
+            found = true;
+        }
+        lines.append(line);
+    }
+
+    // 写回文件
+    if (found) {
+        file.resize(0); // 清空文件
+        QTextStream out(&file);
+        foreach (const QString &line, lines) {
+            out << line << "\n";
+        }
+        Utils::print("成功将权限 " + role + " 授权于 " + username + "\n");
+        return true;
+    } else {
+        Utils::print("[!]角色未找到.\n");
+        return false;
+    }
+}
+}
+//验证模块
+namespace Auth {
+bool checkPermission(Role requiredRole) {
+    return Session::getCurrentRole() >= requiredRole;
+}
+
+QString getRoleName(Role role) {
+    return ROLE_MAP.key(role, "normal");
 } // namespace User
-namespace Session {
-QString currentUser;
-
-void setCurrentUser(const QString &user)
-{
-    currentUser = user;
 }
-
-QString getCurrentUser()
-{
-    return currentUser;
-}
-} // namespace Session
 // DBMS模块
 namespace DBMS {
 void createDatabase(const QString &dbName)
@@ -235,7 +310,7 @@ void createDatabase(const QString &dbName)
     QString path = Utils::dbRoot + "/" + currentUser + "/" + dbName;
     if (Utils::ensureDirExists(path)) {
         QTextStream cout(stdout);
-        Utils::print("Database '" + dbName + "' created.\n");
+        Utils::print("数据库 '" + dbName + "' 已创建.\n");
         Utils::writeLog("Created database " + dbName);
     }
 }
@@ -247,7 +322,7 @@ void dropDatabase(const QString &dbName)
     if (dir.exists()) {
         dir.removeRecursively();
         QTextStream cout(stdout);
-        Utils::print("Database '" + dbName + "' dropped.\n");
+        Utils::print("数据库 '" + dbName + "' 已删除.\n");
         Utils::writeLog("Dropped database " + dbName);
         if (usingDatabase == dbName) {
             usingDatabase.clear();
@@ -265,15 +340,36 @@ void useDatabase(const QString &dbName)
         Utils::writeLog("Using database " + dbName);
     } else {
         QTextStream cout(stdout);
-        Utils::print("[!] Database does not exist.\n");
+
+       Utils::print ("[!] 数据库不存在.\n");
     }
 }
 
+// void createTable(const QString& tableName, const QString& columns) {
+//     if (usingDatabase.isEmpty()) {
+//         QTextStream cout(stdout);
+//         Utils::print( "[!] 未选择数据库.\n");
+//         return;
+//     }
+//     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
+//     QFile file(path);
+//     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+//         QTextStream out(&file);
+//         out << columns << "\n";
+//         QTextStream cout(stdout);
+//        Utils::print ("表 '" + tableName + "' 已创建.\n");
+//         Utils::writeLog("Created table " + tableName);
+//     }
+// }
+
+
+
 void createTable(const QString &tableName, const QString &columns)
 {
+
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-        Utils::print("[!] No database selected.\n");
+        Utils::print("[!] 未选择数据库.\n");
         return;
     }
     //在这判断columns是否满足格式
@@ -330,7 +426,7 @@ void dropTable(const QString &tableName)
 {
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-        Utils::print("[!] No database selected.\n");
+       Utils::print ("[!] 未选择数据库.\n");
         return;
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
@@ -445,7 +541,7 @@ void insertInto(const QString &tableName, const QString &values)
 void selectFrom(const QString &tableName)
 {
     if (usingDatabase.isEmpty()) {
-        Utils::print("[!] No database selected.\n");
+        Utils::print("[!] 未选择数据库.\n");
         return;
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
@@ -470,8 +566,7 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
     QRegularExpressionMatch match = re.match(query);
 
     if (!match.hasMatch()) {
-        Utils::print("[!] Invalid SELECT syntax.");
-        Utils::print("[DEBUG] Full Query: " + query);
+        Utils::print("[!] 无效的 SELECT .");
         return;
     }
 
@@ -496,9 +591,8 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
                         + ".txt";
         Utils::print(path1 + "\n" + path2);
         QFile file1(path1), file2(path2);
-        if (!file1.open(QIODevice::ReadOnly | QIODevice::Text)
-            || !file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            Utils::print("[!] Failed to open tables for JOIN.");
+        if (!file1.open(QIODevice::ReadOnly | QIODevice::Text) || !file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            Utils::print("[!] 打开用于JOIN的表失败.");
             return;
         }
 
@@ -515,13 +609,15 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         int idx2 = header2.indexOf(rightField);
 
         QStringList joinedHeader = header1 + header2;
-        rawLines.append(joinedHeader.join(",")); // 表头 OK
+
+        rawLines.append(joinedHeader.join(","));  // 表头
+
 
         for (const QStringList &r1 : rows1) {
             for (const QStringList &r2 : rows2) {
                 if (idx1 >= 0 && idx2 >= 0 && r1[idx1] == r2[idx2]) {
                     QStringList joinedRow = r1 + r2;
-                    rawLines.append(joinedRow.join(",")); // ✅ join 后加入
+                    rawLines.append(joinedRow.join(","));  //  join 后加入
                 }
             }
         }
@@ -530,7 +626,7 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
                        + ".txt";
         QFile file(path);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            Utils::print("[!] Cannot open table file.");
+            Utils::print("[!] 无法打开表文件.");
             return;
         }
 
@@ -567,7 +663,7 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
                     QStringList fields = line.split(",");
                     QString fieldVal = fields.value(index).trimmed();
 
-                    // Try numeric comparison first, fallback to string
+                    // 首先尝试数字比较，回退到字符串比较
                     bool ok1, ok2;
                     double fieldNum = fieldVal.toDouble(&ok1);
                     double valNum = val.toDouble(&ok2);
@@ -653,7 +749,7 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
             }
             int index = header.indexOf(col);
             if (index == -1) {
-                Utils::print("[!] Field not found in header: " + col);
+                Utils::print("[!] 在标题中未找到字段: " + col);
                 continue;
             }
             selectedIndexes.append(index);
@@ -673,7 +769,7 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
 void selectAdvanced(const QString &command)
 {
     if (usingDatabase.isEmpty()) {
-        Utils::print("[!] No database selected.");
+        Utils::print("[!] 未选择数据库.");
         return;
     }
 
@@ -727,7 +823,9 @@ void deleteFrom(const QString &tableName, const QString &condition)
 {
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-        Utils::print("[!] No database selected.\n");
+
+        Utils::print ("[!]未选择数据库.\n");
+
         return;
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
@@ -749,7 +847,9 @@ void deleteFrom(const QString &tableName, const QString &condition)
     }
     if (idx == -1) {
         QTextStream cout(stdout);
-        Utils::print("[!] Invalid condition.\n");
+
+        Utils::print( "[!] 无效状态.\n");
+
         return;
     }
     lines.append(header);
@@ -768,7 +868,7 @@ void deleteFrom(const QString &tableName, const QString &condition)
         }
     }
     QTextStream cout(stdout);
-    Utils::print("Deleted matching rows from '" + tableName + "'.\n");
+    Utils::print("于" + tableName +  "删除了对应的项 ''.\n");
     Utils::writeLog("Deleted from " + tableName + " where " + condition);
 }
 void headerManage(const QString command){
@@ -981,30 +1081,65 @@ void interpret(const QString &command)
     } else if (op == "REGISTER" && tokens.size() >= 3) {
         if (User::signup(tokens[1], tokens[2])) {
             QTextStream cout(stdout);
-            Utils::print("Register success.\n");
+
+           Utils::print ("注册成功.\n");
         } else {
             QTextStream cout(stdout);
-            Utils::print("[!] Username exists.\n");
+           Utils::print ("[!] 注册失败.\n");
+
         }
     } else if (op == "LOGIN" && tokens.size() >= 3) {
         if (User::login(currentUser, tokens[1], tokens[2])) {
             QTextStream cout(stdout);
-            Utils::print("LOGIN success. Welcome, " + currentUser + "\n");
-            Session::setCurrentUser(currentUser); // 保存当前用户
-            mainWindow->updateDirectoryView(currentUser);
+
+            Utils::print("登录成功. 欢迎你, " + currentUser + "\n");// 保存当前用户
+            QFile file(Utils::dbRoot+currentUser);
+             mainWindow->updateDirectoryView(currentUser);
+
 
         } else {
             QTextStream cout(stdout);
-            Utils::print("[!] Login failed. Invalid username or password.\n");
+            Utils::print("[!] 登录失败，请检查用户名或密码.\n");
         }
-    } else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+
+    }
+    else if (op == "ROLES") {
+        Utils::print("可用的权限: guest, normal, admin\n");
+    }
+    else if (op == "SHOWME") {
+        QString roleName = Auth::getRoleName(Session::getCurrentRole());
+        Utils::print("当前角色及其权限: " + currentUser + " (" + roleName + ")\n");
+    }
+    else if (op == "GRANT" && tokens.size() >= 3) {
+        QString username = tokens[1];
+        QString role = tokens[2].toLower();
+        User::grantRole(currentUser, username, role);
+    }
+    else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
         DBMS::createDatabase(tokens[2]);
-    } else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+    }
+    else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
+
         DBMS::dropDatabase(tokens[2]);
     } else if (op == "USE" && tokens.size() >= 2) {
         DBMS::useDatabase(tokens[1]);
-        mainWindow->updateDirectoryView(currentUser + "/" + tokens[1]);
-    } else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
+
+        mainWindow->updateDirectoryView(currentUser+"/"+tokens[1]);
+    }
+    else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
+
         QString tableName = tokens[2];
         int start = command.indexOf('(');
         int end = command.indexOf(')');
@@ -1012,9 +1147,21 @@ void interpret(const QString &command)
             QString cols = command.mid(start + 1, end - start - 1);
             DBMS::createTable(tableName, cols);
         }
-    } else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
+
+    }
+    else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
         DBMS::dropTable(tokens[2]);
-    } else if (op == "INSERT" && tokens.size() >= 4 && tokens[1].toUpper() == "INTO") {
+    }
+    else if (op == "INSERT" && tokens.size() >= 4 && tokens[1].toUpper() == "INTO") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
+
         QString tableName = tokens[2];
         int start = command.indexOf('(');
         int end = command.indexOf(')');
@@ -1024,16 +1171,21 @@ void interpret(const QString &command)
         }
     } else if (op == "SELECT") {
         DBMS::selectAdvanced(command);
-    } else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {
+
+    }
+    else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
         QString tableName = tokens[2];
         QString condition = tokens.mid(4).join(' ');
         DBMS::deleteFrom(tableName, condition);
     } else if(op == "ALTER"){
         DBMS::headerManage(tokens.join(' '));
-    }
-    else {
+    }else {
         QTextStream cout(stdout);
         Utils::print("[!] Unknown command.\n");
     }
 }
-} // namespace Interpreter
+}
