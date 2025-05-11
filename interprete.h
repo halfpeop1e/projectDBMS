@@ -3,6 +3,22 @@
 #include <QString>
 #include <QTextBrowser>
 
+namespace Auth {
+enum Role {
+    GUEST = 0,    // 只读权限
+    NORMAL = 1,   // 基本操作权限
+    ADMIN = 2     // 所有权限
+};
+
+const QMap<QString, Role> ROLE_MAP = {
+    {"guest", GUEST},
+    {"normal", NORMAL},
+    {"admin", ADMIN}
+};
+bool checkPermission(Role requiredRole);
+QString getRoleName(Role role);
+}
+
 namespace Utils {
 extern QString dbRoot;
 extern QString userFile;
@@ -22,6 +38,7 @@ QString formatAsTable(const QStringList& lines);
 namespace User {
 bool signup(const QString& username, const QString& password);
 bool login(QString& user);
+bool grantRole(const QString& adminUser, const QString& username, const QString& role);
 }
 
 namespace DBMS {

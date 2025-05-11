@@ -13,6 +13,20 @@ MainWindow::MainWindow(QWidget *parent)
     model->setRootPath("");
     ui->treeView->setModel(model);
     ui->treeView->setRootIndex(model->index(""));
+    QString Welcomemessage=R"(##############################################
+  _____  ____  __  __  _____
+ |  __ \|  _ \|  \/  |/ ____|
+ | |  | | |_) | \  / | (___
+ | |  | |  _ <| |\/| |\___ \
+ | |__| | |_) | |  | |____) |
+ |_____/|____/|_|  |_|_____/
+
+       -> help:语法帮助 <-
+
+ ##############################################)";
+    ui->shell->append(Welcomemessage);
+    ui->shell->setFont(QFont("Courier New", 13));
+
 
 }
 
@@ -34,7 +48,6 @@ void MainWindow::updateDirectoryView(const QString &username)
     QString userPath = Utils::dbRoot+"/"+username;
     QDir dir(userPath);
     if (!dir.exists()) {
-        Utils::print("切换至对应界面失败");
         qDebug() << "[!] 目录不存在:" << userPath;
         return;
     }

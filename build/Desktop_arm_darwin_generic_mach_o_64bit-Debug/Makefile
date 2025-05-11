@@ -1360,7 +1360,9 @@ interprete.o: ../../interprete.cpp ../../mainwindow.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QStringList \
 		/opt/homebrew/lib/QtCore.framework/Headers/qstringlist.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QDebug \
-		/opt/homebrew/lib/QtCore.framework/Headers/qdebug.h
+		/opt/homebrew/lib/QtCore.framework/Headers/qdebug.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QtGlobal \
+		/opt/homebrew/lib/QtCore.framework/Headers/qglobal.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o interprete.o ../../interprete.cpp
 
 main.o: ../../main.cpp ../../mainwindow.h \
@@ -1377,6 +1379,9 @@ main.o: ../../main.cpp ../../mainwindow.h \
 		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
 		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
 		../../function.h \
+		../../interprete.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QString \
+		/opt/homebrew/lib/QtCore.framework/Headers/qstring.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QApplication \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qapplication.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o ../../main.cpp

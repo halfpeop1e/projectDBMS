@@ -19,7 +19,8 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
-     void updateDirectoryView(const QString &username);
+    void updateDirectoryView(const QString &username);
+    void welcome();
     ~MainWindow();
 
 private slots:
