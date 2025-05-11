@@ -781,9 +781,10 @@ void headerManage(const QString command){
 
     QRegularExpression regex(
         "ALTER\\s+TABLE\\s+(\\w+)\\s+"
-        "(ADD|MODIFY|DROP)\\s+(\\w+)\\s+"
+        "(ADD|MODIFY|DROP)\\s+"
         "(\\w+)"
-        "(?:\\s+(.*))?",
+        "(?:\\s+(\\w+)(?:\\s+(.*))?)?"
+        "(?=\\s*|$)",
         QRegularExpression::CaseInsensitiveOption
         );
     QRegularExpressionMatch match = regex.match(command);
@@ -815,19 +816,19 @@ void headerManage(const QString command){
         if (!file2.open(QIODevice::ReadWrite | QIODevice::Text)) {
             qDebug() << "Failed to open file:" << path2 << "Error:" << file2.errorString();
         }
-        if (extraInfo.toUpper() != "INT" &&
-            extraInfo.toUpper() != "VARCHAR" &&
-            extraInfo.toUpper() != "TEXT" &&
-            extraInfo.toUpper() != "DATE" &&
-            extraInfo.toUpper() != "FLOAT" &&
-            extraInfo.toUpper() != "DOUBLE" &&
-            extraInfo.toUpper() != "BOOLEAN"){
-
-            Utils::print("[!] Error type\n");
-            return;
-        }
-
         if (operation.toUpper() == "ADD") {
+
+            if (extraInfo.toUpper() != "INT" &&
+                extraInfo.toUpper() != "VARCHAR" &&
+                extraInfo.toUpper() != "TEXT" &&
+                extraInfo.toUpper() != "DATE" &&
+                extraInfo.toUpper() != "FLOAT" &&
+                extraInfo.toUpper() != "DOUBLE" &&
+                extraInfo.toUpper() != "BOOLEAN"){
+
+                Utils::print("[!] Error type\n");
+                return;
+            }
             //添加到列
             QTextStream in(&file);
             QString firstLine = in.readLine();
@@ -862,6 +863,17 @@ void headerManage(const QString command){
             file2.close();
         }
         else if (operation.toUpper() == "MODIFY") {
+            if (extraInfo.toUpper() != "INT" &&
+                extraInfo.toUpper() != "VARCHAR" &&
+                extraInfo.toUpper() != "TEXT" &&
+                extraInfo.toUpper() != "DATE" &&
+                extraInfo.toUpper() != "FLOAT" &&
+                extraInfo.toUpper() != "DOUBLE" &&
+                extraInfo.toUpper() != "BOOLEAN"){
+
+                Utils::print("[!] Error type\n");
+                return;
+            }
             QTextStream in(&file);
             QString columnLine = in.readLine();
             QStringList columns = columnLine.split(",", Qt::SkipEmptyParts);
@@ -878,12 +890,12 @@ void headerManage(const QString command){
             }
             // 修改对应位置的列定义
             definitions[columnIndex] = extraInfo;
-            QByteArray remainingContent2 = file2.readAll();
+            QString rest = in2.readAll();
             file2.resize(0);
             file2.seek(0);
             QTextStream out2(&file2);
             out2 << definitions.join(",") << "\n";
-            out2 << remainingContent2;
+            out2 << rest;
             file.close();
             file2.close();
         }
@@ -920,20 +932,18 @@ void headerManage(const QString command){
             // 处理file的所有行
             for (int i = 0; i < fileLines.size(); ++i) {
                 QStringList fields = fileLines[i].split(",", Qt::SkipEmptyParts);
-                if (fields.size() > columnIndex) {
-                    fields.removeAt(columnIndex);
-                }
+                fields.removeAt(columnIndex);
                 fileLines[i] = fields.join(",");
             }
 
             // 处理file2的所有行
-            for (int i = 0; i < file2Lines.size(); ++i) {
-                QStringList fields = file2Lines[i].split(",", Qt::SkipEmptyParts);
-                if (fields.size() > columnIndex) {
-                    fields.removeAt(columnIndex);
-                }
-                file2Lines[i] = fields.join(",");
+            QStringList fields = file2Lines[0].split(",", Qt::SkipEmptyParts);
+            fields.removeAt(columnIndex);
+            file2Lines[0] = fields.join(",");
+            for(int i=columnIndex+1;i<file2Lines.size()-1;i++){
+                file2Lines[i]=file2Lines[i+1];
             }
+            file2Lines.resize(file2Lines.size()-1);
 
             file.resize(0);
             file.seek(0);
@@ -951,9 +961,9 @@ void headerManage(const QString command){
         }
         Utils::print("Alter table: " + tableName + operation + columnName +extraInfo);
         Utils::writeLog("Alter table: " + tableName + operation + columnName +extraInfo);
-    } else {
+    }else {
         qDebug() << "Invalid ALTER TABLE syntax";
-    }
+       }
 }
 } // namespace DBMS
 
