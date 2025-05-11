@@ -1,36 +1,39 @@
-#include "mainwindow.h"
 #include "interprete.h"
 #include <QCoreApplication>
-#include <QFile>
-#include <QTextStream>
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
+#include <QFile>
 #include <QRegularExpression>
 #include <QStringList>
-#include <QDebug>
 #include <QTextBrowser>
+#include <QTextStream>
 #include <QtGlobal>
+#include "mainwindow.h"
 // 全局变量
 QString currentUser;
 QString usingDatabase;
-QTextBrowser* showinShell = nullptr;
+QTextBrowser *showinShell = nullptr;
 // 工具函数区:
 extern MainWindow *mainWindow;
 namespace Utils {
-QString dbRoot = "/Users/fengzhu/Resource"; // 所有数据库存放路径
+QString dbRoot = "/Users/fengzhu/Resource";             // 所有数据库存放路径
 QString userFile = "/Users/fengzhu/Resource/users.txt"; // 用户信息存储文件
-QString logFile = "/Users/fengzhu/Resource/log.txt"; // 日志文件
-void setOutputShell(QTextBrowser* shell) {
+QString logFile = "/Users/fengzhu/Resource/log.txt";    // 日志文件
+void setOutputShell(QTextBrowser *shell)
+{
     showinShell = shell;
 }
-void print(const QString& msg) {
+void print(const QString &msg)
+{
     if (showinShell) {
         showinShell->append(msg);
     } else {
         QTextStream(stdout) << msg << "\n";
     }
 }
-void writeLog(const QString& entry) {
+void writeLog(const QString &entry)
+{
     QFile file(logFile);
     if (file.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&file);
@@ -40,36 +43,42 @@ void writeLog(const QString& entry) {
     }
 }
 
-QStringList splitCommand(const QString& command) {
+QStringList splitCommand(const QString &command)
+{
     QRegularExpression regex("\\s+");
     return command.split(regex, Qt::SkipEmptyParts);
 }
 
-void showHelp() {
+void showHelp()
+{
     QTextStream cout(stdout);
-    print( "========Commands========\n");
-    print ("REGISTER username password\n");
-    print ("LOGIN username password\n");
-    print ("CREATE DATABASE dbname\n");
-    print ("DROP DATABASE dbname\n");
+    print("========Commands========\n");
+    print("REGISTER username password\n");
+    print("LOGIN username password\n");
+    print("CREATE DATABASE dbname\n");
+    print("DROP DATABASE dbname\n");
     print("USE dbname\n");
-    print ("CREATE TABLE tablename (col1,col2,...)\n");
+    print("CREATE TABLE tablename (col1 type1,col2 type2,...)\n");
     print("DROP TABLE tablename\n");
-    print ("INSERT INTO tablename VALUES (val1,val2,...)\n");
+    print("INSERT INTO tablename VALUES (val1,val2,...)\n");
     print("SELECT * FROM tablename\n");
     print("DELETE FROM tablename WHERE col=value\n");
+    print("ALTER TABLE tablename ADD/DROP/MODIFY columnname (type);\n");
     print("EXIT / QUIT\n\n");
 }
 
-bool ensureDirExists(const QString& path) {
+bool ensureDirExists(const QString &path)
+{
     QDir dir(path);
     if (!dir.exists()) {
         return dir.mkpath(".");
     }
     return true;
 }
-QString formatAsTable(const QStringList& lines) {
-    if (lines.isEmpty()) return "";
+QString formatAsTable(const QStringList &lines)
+{
+    if (lines.isEmpty())
+        return "";
 
     // 1. 解析数据并检测数字列
     QList<QStringList> table;
@@ -97,13 +106,14 @@ QString formatAsTable(const QStringList& lines) {
     }
 
     // 2. 生成HTML表格
-    QString html = "<table style='border-collapse: collapse; font-family: monospace; width: 100%;'>\n";
+    QString html
+        = "<table style='border-collapse: collapse; font-family: monospace; width: 100%;'>\n";
 
     // 表头行（加粗居中）
     html += "  <tr style='background-color: #f0f0f0;'>\n";
     for (int j = 0; j < table[0].size(); ++j) {
         html += QString("    <th style='border: 1px solid black; padding: 4px;'>%1</th>\n")
-        .arg(table[0][j].trimmed());
+                    .arg(table[0][j].trimmed());
     }
     html += "  </tr>\n";
 
@@ -115,11 +125,10 @@ QString formatAsTable(const QStringList& lines) {
             QString content = table[i][j].trimmed().isEmpty() ? "&nbsp;" : table[i][j].trimmed();
 
             // 转义HTML特殊字符
-            content.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;");
+            content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 
-            html += QString("    <td style='border: 1px solid black; padding: 4px; text-align: %1;'>%2</td>\n")
+            html += QString("    <td style='border: 1px solid black; padding: 4px; text-align: "
+                            "%1;'>%2</td>\n")
                         .arg(align)
                         .arg(content);
         }
@@ -129,11 +138,12 @@ QString formatAsTable(const QStringList& lines) {
     html += "</table>";
     return html;
 }
-}
+} // namespace Utils
 
 // 用户模块
 namespace User {
-bool signup(const QString& username, const QString& password) {
+bool signup(const QString &username, const QString &password)
+{
     QFile file(Utils::userFile);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return false;
@@ -156,10 +166,15 @@ bool signup(const QString& username, const QString& password) {
     QTextStream out(&file);
     out << username << "," << password << "\n";
     file.close();
+    QString path=Utils::dbRoot+"/"+username;
+    QDir().mkpath(path);
+    currentUser=username;
+    mainWindow->updateDirectoryView(currentUser);
     return true;
 }
 
-bool login(QString& user,QString& username1,QString& password1) {
+bool login(QString &user, QString &username1, QString &password1)
+{
     QTextStream cin(stdin);
     QTextStream cout(stdout);
     cout.flush();
@@ -181,21 +196,24 @@ bool login(QString& user,QString& username1,QString& password1) {
     }
     return false;
 }
-}
+} // namespace User
 namespace Session {
 QString currentUser;
 
-void setCurrentUser(const QString& user) {
+void setCurrentUser(const QString &user)
+{
     currentUser = user;
 }
 
-QString getCurrentUser() {
+QString getCurrentUser()
+{
     return currentUser;
 }
-}
+} // namespace Session
 // DBMS模块
 namespace DBMS {
-void createDatabase(const QString& dbName) {
+void createDatabase(const QString &dbName)
+{
     QString path = Utils::dbRoot + "/" + currentUser + "/" + dbName;
     if (Utils::ensureDirExists(path)) {
         QTextStream cout(stdout);
@@ -204,7 +222,8 @@ void createDatabase(const QString& dbName) {
     }
 }
 
-void dropDatabase(const QString& dbName) {
+void dropDatabase(const QString &dbName)
+{
     QString path = Utils::dbRoot + "/" + currentUser + "/" + dbName;
     QDir dir(path);
     if (dir.exists()) {
@@ -218,75 +237,128 @@ void dropDatabase(const QString& dbName) {
     }
 }
 
-void useDatabase(const QString& dbName) {
+void useDatabase(const QString &dbName)
+{
     QString path = Utils::dbRoot + "/" + currentUser + "/" + dbName;
     if (QDir(path).exists()) {
         usingDatabase = dbName;
         QTextStream cout(stdout);
-       Utils::print ("Using database '" +dbName + "'.\n");
+        Utils::print("Using database '" + dbName + "'.\n");
         Utils::writeLog("Using database " + dbName);
     } else {
         QTextStream cout(stdout);
-       Utils::print ("[!] Database does not exist.\n");
+        Utils::print("[!] Database does not exist.\n");
     }
 }
 
-void createTable(const QString& tableName, const QString& columns) {
-    if (usingDatabase.isEmpty()) {
-        QTextStream cout(stdout);
-        Utils::print( "[!] No database selected.\n");
-        return;
-    }
-    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream out(&file);
-        out << columns << "\n";
-        QTextStream cout(stdout);
-       Utils::print ("Table '" + tableName + "' created.\n");
-        Utils::writeLog("Created table " + tableName);
-    }
-}
-
-void dropTable(const QString& tableName) {
+void createTable(const QString &tableName, const QString &columns)
+{
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
         Utils::print("[!] No database selected.\n");
         return;
     }
-    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
-    QFile file(path);
-    if (file.exists()) {
-        file.remove();
+    //在这判断columns是否满足格式
+    QRegularExpression regx(
+        "^\\s*[a-zA-Z_]\\w*\\s+"
+        "(INT|VARCHAR|TEXT|DATE|FLOAT|DOUBLE|BOOLEAN)\\s*"
+        "(,\\s*[a-zA-Z_]\\w*\\s+"
+        "(INT|VARCHAR|TEXT|DATE|FLOAT|DOUBLE|BOOLEAN)\\s*)*$",
+        QRegularExpression::CaseInsensitiveOption
+        );
+    if(!regx.match(columns).hasMatch()){
         QTextStream cout(stdout);
-       Utils::print ("Table '" + tableName + "' dropped.\n");
-        Utils::writeLog("Dropped table " + tableName);
+        qDebug()<<"receive: " <<columns;
+        Utils::print("[!] Invalid columns format. Expected format: 'name1 type1,name2 type2,...'\n");
+        return;
+    }
+    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + ".txt";
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                    + "_data" +".txt";
+
+    QFile file(path);
+    QFile file2(path2);
+
+    if (file.exists() || file2.exists()) {
+        QTextStream cout(stdout);
+        Utils::print("[!] Error: Table '" + tableName + "' already exists.\n");
+        return;
+    }
+
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)&&
+        file2.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        QTextStream out2(&file2);
+        QStringList pairs = columns.split(",", Qt::SkipEmptyParts);
+        QStringList firstColumnNames;
+        QStringList secondColumnNames;
+        for (const QString &pair : pairs) {
+            QStringList parts = pair.trimmed().split(" ", Qt::SkipEmptyParts);
+            if (parts.size() >= 1) {
+                firstColumnNames << parts[0];
+                secondColumnNames << parts[1];
+            }
+        }
+        out << firstColumnNames.join(",") << "\n";
+        out2 << secondColumnNames.join(",")<< "\n";
+        QTextStream cout(stdout);
+        Utils::print("Table '" + tableName + "' created.\n");
+        Utils::writeLog("Created table " + tableName);
     }
 }
 
-void insertInto(const QString& tableName, const QString& values) {
+void dropTable(const QString &tableName)
+{
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-       Utils::print ("[!] No database selected.\n");
+        Utils::print("[!] No database selected.\n");
         return;
     }
-    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
+    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + ".txt";
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                    + "_data" +".txt";
+    QFile file(path);
+    QFile file2(path2);
+    if (file.exists()) {
+        file.remove();
+        QTextStream cout(stdout);
+        Utils::print("Table '" + tableName + "' dropped.\n");
+        Utils::writeLog("Dropped table " + tableName);
+    }
+    if(file2.exists()){
+        file2.remove();
+    }
+}
+
+void insertInto(const QString &tableName, const QString &values)
+{
+    if (usingDatabase.isEmpty()) {
+        QTextStream cout(stdout);
+        Utils::print("[!] No database selected.\n");
+        return;
+    }
+    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + ".txt";
     QFile file(path);
     if (file.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&file);
         out << values << "\n";
         QTextStream cout(stdout);
-       Utils::print ("Inserted into '" + tableName + "'.\n");
+        Utils::print("Inserted into '" + tableName + "'.\n");
         Utils::writeLog("Inserted into " + tableName);
     }
 }
 
-void selectFrom(const QString& tableName) {
+void selectFrom(const QString &tableName)
+{
     if (usingDatabase.isEmpty()) {
         Utils::print("[!] No database selected.\n");
         return;
     }
-    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
+    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + ".txt";
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
@@ -298,8 +370,11 @@ void selectFrom(const QString& tableName) {
         Utils::writeLog("Selected from " + tableName);
     }
 }
-void selectAdvancedInternal(const QString& query, QStringList& result) {
-    QRegularExpression re(R"(SELECT\s+(.*?)\s+FROM\s+(\w+)\s*(?:JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+))?(?:\s+WHERE\s+(.*?))?(?:\s+GROUP\s+BY\s+(.*?))?(?:\s+ORDER\s+BY\s+(.*?))?$)", QRegularExpression::CaseInsensitiveOption);
+void selectAdvancedInternal(const QString &query, QStringList &result)
+{
+    QRegularExpression re(
+        R"(SELECT\s+(.*?)\s+FROM\s+(\w+)\s*(?:JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+))?(?:\s+WHERE\s+(.*?))?(?:\s+GROUP\s+BY\s+(.*?))?(?:\s+ORDER\s+BY\s+(.*?))?$)",
+        QRegularExpression::CaseInsensitiveOption);
 
     QRegularExpressionMatch match = re.match(query);
 
@@ -309,9 +384,9 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         return;
     }
 
-    QString fieldsStr = match.captured(1).trimmed();  // 选中的字段
-    QString table1 = match.captured(2).trimmed();     // 主表
-    QString joinTable = match.captured(3).trimmed();  // 被连接表
+    QString fieldsStr = match.captured(1).trimmed(); // 选中的字段
+    QString table1 = match.captured(2).trimmed();    // 主表
+    QString joinTable = match.captured(3).trimmed(); // 被连接表
     QString leftTable = match.captured(4).trimmed();
     QString leftField = match.captured(5).trimmed();
     QString rightTable = match.captured(6).trimmed();
@@ -324,11 +399,14 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
 
     if (!joinTable.isEmpty()) {
         // 加载两张表
-        QString path1 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
-        QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + joinTable + ".txt";
-        Utils::print(path1+"\n"+path2);
+        QString path1 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1
+                        + ".txt";
+        QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + joinTable
+                        + ".txt";
+        Utils::print(path1 + "\n" + path2);
         QFile file1(path1), file2(path2);
-        if (!file1.open(QIODevice::ReadOnly | QIODevice::Text) || !file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        if (!file1.open(QIODevice::ReadOnly | QIODevice::Text)
+            || !file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
             Utils::print("[!] Failed to open tables for JOIN.");
             return;
         }
@@ -338,25 +416,27 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         QStringList header2 = in2.readLine().split(",");
         QList<QStringList> rows1, rows2;
 
-
-        while (!in1.atEnd()) rows1.append(in1.readLine().split(","));
-        while (!in2.atEnd()) rows2.append(in2.readLine().split(","));
+        while (!in1.atEnd())
+            rows1.append(in1.readLine().split(","));
+        while (!in2.atEnd())
+            rows2.append(in2.readLine().split(","));
         int idx1 = header1.indexOf(leftField);
         int idx2 = header2.indexOf(rightField);
 
         QStringList joinedHeader = header1 + header2;
-        rawLines.append(joinedHeader.join(","));  // 表头 OK
+        rawLines.append(joinedHeader.join(",")); // 表头 OK
 
-        for (const QStringList& r1 : rows1) {
-            for (const QStringList& r2 : rows2) {
+        for (const QStringList &r1 : rows1) {
+            for (const QStringList &r2 : rows2) {
                 if (idx1 >= 0 && idx2 >= 0 && r1[idx1] == r2[idx2]) {
                     QStringList joinedRow = r1 + r2;
-                    rawLines.append(joinedRow.join(","));  // ✅ join 后加入
+                    rawLines.append(joinedRow.join(",")); // ✅ join 后加入
                 }
             }
         }
     } else {
-        QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
+        QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1
+                       + ".txt";
         QFile file(path);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             Utils::print("[!] Cannot open table file.");
@@ -384,15 +464,15 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         QRegularExpressionMatch match = re.match(whereClause.trimmed());
 
         if (match.hasMatch()) {
-             col = match.captured(1).trimmed();
+            col = match.captured(1).trimmed();
             QString op = match.captured(2).trimmed();
-             val = match.captured(3).trimmed();
+            val = match.captured(3).trimmed();
 
             int index = header.indexOf(col);
             if (index == -1) {
                 qWarning() << "Column not found:" << col;
             } else {
-                for (const QString& line : rawLines) {
+                for (const QString &line : rawLines) {
                     QStringList fields = line.split(",");
                     QString fieldVal = fields.value(index).trimmed();
 
@@ -403,17 +483,27 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
 
                     bool match = false;
                     if (ok1 && ok2) {
-                        if (op == "=") match = (fieldNum == valNum);
-                        else if (op == "<") match = (fieldNum < valNum);
-                        else if (op == ">") match = (fieldNum > valNum);
-                        else if (op == "<=") match = (fieldNum <= valNum);
-                        else if (op == ">=") match = (fieldNum >= valNum);
+                        if (op == "=")
+                            match = (fieldNum == valNum);
+                        else if (op == "<")
+                            match = (fieldNum < valNum);
+                        else if (op == ">")
+                            match = (fieldNum > valNum);
+                        else if (op == "<=")
+                            match = (fieldNum <= valNum);
+                        else if (op == ">=")
+                            match = (fieldNum >= valNum);
                     } else {
-                        if (op == "=") match = (fieldVal == val);
-                        else if (op == "<") match = (fieldVal < val);
-                        else if (op == ">") match = (fieldVal > val);
-                        else if (op == "<=") match = (fieldVal <= val);
-                        else if (op == ">=") match = (fieldVal >= val);
+                        if (op == "=")
+                            match = (fieldVal == val);
+                        else if (op == "<")
+                            match = (fieldVal < val);
+                        else if (op == ">")
+                            match = (fieldVal > val);
+                        else if (op == "<=")
+                            match = (fieldVal <= val);
+                        else if (op == ">=")
+                            match = (fieldVal >= val);
                     }
 
                     if (match) {
@@ -421,9 +511,7 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
                     }
                 }
             }
-
         }
-
 
         rawLines = filtered;
     }
@@ -435,7 +523,7 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         int groupIdx = header.indexOf(groupByClause);
         QMap<QString, int> groupCount;
 
-        for (const QString& line : rawLines) {
+        for (const QString &line : rawLines) {
             QString key = line.split(",").value(groupIdx);
             groupCount[key]++;
         }
@@ -452,7 +540,7 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         QString headerLine = rawLines.takeFirst();
         QStringList header = headerLine.split(",");
         int sortIdx = header.indexOf(orderByClause);
-        std::sort(rawLines.begin(), rawLines.end(), [sortIdx](const QString& a, const QString& b) {
+        std::sort(rawLines.begin(), rawLines.end(), [sortIdx](const QString &a, const QString &b) {
             return a.split(",").value(sortIdx) < b.split(",").value(sortIdx);
         });
         rawLines.prepend(headerLine);
@@ -470,7 +558,7 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         for (QString col : wanted) {
             col = col.trimmed();
             if (col.contains(".")) {
-                col = col.section('.', 1);  // 去除 student. 或 people. 的前缀
+                col = col.section('.', 1); // 去除 student. 或 people. 的前缀
             }
             int index = header.indexOf(col);
             if (index == -1) {
@@ -481,7 +569,7 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         }
     }
     QStringList formattedResult;
-    for (const QString& line : rawLines) {
+    for (const QString &line : rawLines) {
         QStringList fields = line.split(",");
         QStringList out;
         for (int idx : selectedIndexes)
@@ -491,7 +579,8 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
 
     result = formattedResult;
 }
-void selectAdvanced(const QString& command) {
+void selectAdvanced(const QString &command)
+{
     if (usingDatabase.isEmpty()) {
         Utils::print("[!] No database selected.");
         return;
@@ -501,14 +590,13 @@ void selectAdvanced(const QString& command) {
     QString query = command.trimmed();
     QStringList result;
 
-
     // UNION 查询
     if (query.contains("UNION", Qt::CaseInsensitive)) {
         QStringList parts = query.split(QRegularExpression("(?i)UNION"));
         QStringList allResults;
         QStringList header; // 用于保存统一的字段标题
 
-        for (const QString& part : parts) {
+        for (const QString &part : parts) {
             QString subQuery = part.trimmed();
             QStringList result;
             selectAdvancedInternal(subQuery, result);
@@ -523,7 +611,7 @@ void selectAdvanced(const QString& command) {
             }
 
             // 确保合并的每个结果都符合统一的字段标题
-            for (const QString& line : result) {
+            for (const QString &line : result) {
                 QStringList fields = line.split(",");
                 if (fields.size() == header.size()) {
                     allResults.append(line);
@@ -533,7 +621,7 @@ void selectAdvanced(const QString& command) {
 
         // 输出所有结果
         Utils::print("==== UNION RESULT ====");
-       Utils::print(Utils::formatAsTable(allResults));
+        Utils::print(Utils::formatAsTable(allResults));
         return;
         return;
     }
@@ -544,14 +632,15 @@ void selectAdvanced(const QString& command) {
     Utils::print(Utils::formatAsTable(result));
 }
 
-
-void deleteFrom(const QString& tableName, const QString& condition) {
+void deleteFrom(const QString &tableName, const QString &condition)
+{
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-        Utils::print ("[!] No database selected.\n");
+        Utils::print("[!] No database selected.\n");
         return;
     }
-    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
+    QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + ".txt";
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return;
@@ -569,7 +658,7 @@ void deleteFrom(const QString& tableName, const QString& condition) {
     }
     if (idx == -1) {
         QTextStream cout(stdout);
-        Utils::print( "[!] Invalid condition.\n");
+        Utils::print("[!] Invalid condition.\n");
         return;
     }
     lines.append(header);
@@ -583,7 +672,7 @@ void deleteFrom(const QString& tableName, const QString& condition) {
     file.close();
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         QTextStream out(&file);
-        for (const QString& l : lines) {
+        for (const QString &l : lines) {
             out << l << "\n";
         }
     }
@@ -591,11 +680,176 @@ void deleteFrom(const QString& tableName, const QString& condition) {
     Utils::print("Deleted matching rows from '" + tableName + "'.\n");
     Utils::writeLog("Deleted from " + tableName + " where " + condition);
 }
+void headerManage(const QString command){
+
+    if (usingDatabase.isEmpty()) {
+        QTextStream cout(stdout);
+        Utils::print("[!] No database selected.\n");
+        return;
+    }
+
+    QRegularExpression regex(
+        "ALTER\\s+TABLE\\s+(\\w+)\\s+"
+        "(ADD|MODIFY|DROP)\\s+(\\w+)\\s+"
+        "(\\w+)"
+        "(?:\\s+(.*))?",
+        QRegularExpression::CaseInsensitiveOption
+        );
+    QRegularExpressionMatch match = regex.match(command);
+
+    if (match.hasMatch()) {
+        //处理指令
+        QString tableName = match.captured(1);
+        QString operation = match.captured(2);
+        QString columnName = match.captured(3);
+        QString extraInfo = match.captured(4);
+
+        QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                       + ".txt";
+        QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                        + "_data" +".txt";
+        QFile file(path);
+        QFile file2(path2);
+
+        if (!file.exists()||!file2.exists()) {
+            qDebug() << "Error: Table file does not exist";
+            Utils::print("[!] Table file does not exist\n");
+            return;
+        }
+        file.open(QIODevice::ReadWrite | QIODevice::Text);
+        file2.open(QIODevice::ReadWrite | QIODevice::Text);
+
+        if (operation.toUpper() == "ADD") {
+            //添加到列
+            QTextStream in(&file);
+            QString firstLine = in.readLine();
+            QByteArray remainingContent = file.readAll();
+            file.resize(0);
+            file.seek(0);
+            QTextStream out(&file);
+            if (firstLine.isEmpty()) {
+                out << columnName << "\n";
+            } else {
+                out << firstLine << "," << columnName << "\n";
+            }
+            out << remainingContent;
+            file.close();
+
+            //添加到列定义
+            QTextStream in2(&file2);
+            QString firstLine2 = in2.readLine();
+            qint64 firstLineEndPos2 = file2.pos();
+            QByteArray remainingContent2 = file2.readAll();
+            file2.resize(0);
+            file2.seek(0);
+            QTextStream out2(&file2);
+            if (firstLine2.isEmpty()) {
+                out << extraInfo << "\n";
+            } else {
+                out << firstLine2 << "," << extraInfo << "\n";
+            }
+            out << remainingContent2;
+            file2.close();
+
+        }
+        else if (operation.toUpper() == "MODIFY") {
+            QTextStream in(&file);
+            QString columnLine = in.readLine();
+            QStringList columns = columnLine.split(",", Qt::SkipEmptyParts);
+
+            QTextStream in2(&file2);
+            QString defLine = in2.readLine();
+            QStringList definitions = defLine.split(",", Qt::SkipEmptyParts);
+
+            int columnIndex = columns.indexOf(columnName);
+            if (columnIndex == -1) {
+                qDebug() << "Error: Column" << columnName << "not found in table";
+                Utils::print("[!] Column '" + columnName + "' not found in table\n");
+                return;
+            }
+            // 修改对应位置的列定义
+            definitions[columnIndex] = extraInfo;
+            QByteArray remainingContent2 = file2.readAll();
+            file2.resize(0);
+            file2.seek(0);
+            QTextStream out2(&file2);
+            out2 << definitions.join(",") << "\n";
+            out2 << remainingContent2;
+            file.close();
+            file2.close();
+        }
+        else if (operation.toUpper() == "DROP") {
+            // 读取file的所有内容
+            QTextStream in(&file);
+            QStringList fileLines;
+            while (!in.atEnd()) {
+                fileLines << in.readLine();
+            }
+
+            // 读取file2的所有内容
+            QTextStream in2(&file2);
+            QStringList file2Lines;
+            while (!in2.atEnd()) {
+                file2Lines << in2.readLine();
+            }
+
+            // 检查是否有数据
+            if (fileLines.isEmpty() || file2Lines.isEmpty()) {
+                qDebug() << "Error: Empty table file";
+                Utils::print("[!] Empty table file\n");
+                return;
+            }
+
+            QStringList columns = fileLines.first().split(",", Qt::SkipEmptyParts);
+            int columnIndex = columns.indexOf(columnName);
+            if (columnIndex == -1) {
+                qDebug() << "Error: Column" << columnName << "not found in table";
+                Utils::print("[!] Column '" + columnName + "' not found in table\n");
+                return;
+            }
+
+            // 处理file的所有行
+            for (int i = 0; i < fileLines.size(); ++i) {
+                QStringList fields = fileLines[i].split(",", Qt::SkipEmptyParts);
+                if (fields.size() > columnIndex) {
+                    fields.removeAt(columnIndex);
+                }
+                fileLines[i] = fields.join(",");
+            }
+
+            // 处理file2的所有行
+            for (int i = 0; i < file2Lines.size(); ++i) {
+                QStringList fields = file2Lines[i].split(",", Qt::SkipEmptyParts);
+                if (fields.size() > columnIndex) {
+                    fields.removeAt(columnIndex);
+                }
+                file2Lines[i] = fields.join(",");
+            }
+
+            file.resize(0);
+            file.seek(0);
+            QTextStream out(&file);
+            out << fileLines.join("\n");
+
+            file2.resize(0);
+            file2.seek(0);
+            QTextStream out2(&file2);
+            out2 << file2Lines.join("\n");
+
+            qDebug() << "Column" << columnName << "dropped successfully";
+            Utils::print("[+] Column '" + columnName + "' dropped successfully\n");
+
+        }
+    } else {
+        qDebug() << "Invalid ALTER TABLE syntax";
+    }
 }
+} // namespace DBMS
 
 // 解释器模块
 namespace Interpreter {
-void interpret(const QString& command) {
+void interpret(const QString &command)
+{
     QStringList tokens = Utils::splitCommand(command);
     if (tokens.isEmpty())
         return;
@@ -603,39 +857,33 @@ void interpret(const QString& command) {
 
     if (op == "HELP") {
         Utils::showHelp();
-    }
-    else if (op == "REGISTER" && tokens.size() >= 3) {
+    } else if (op == "REGISTER" && tokens.size() >= 3) {
         if (User::signup(tokens[1], tokens[2])) {
             QTextStream cout(stdout);
-           Utils::print ("Register success.\n");
+            Utils::print("Register success.\n");
         } else {
             QTextStream cout(stdout);
-           Utils::print ("[!] Username exists.\n");
+            Utils::print("[!] Username exists.\n");
         }
-    }
-    else if (op == "LOGIN" && tokens.size() >= 3) {
-        if (User::login(currentUser,tokens[1], tokens[2])) {
+    } else if (op == "LOGIN" && tokens.size() >= 3) {
+        if (User::login(currentUser, tokens[1], tokens[2])) {
             QTextStream cout(stdout);
             Utils::print("LOGIN success. Welcome, " + currentUser + "\n");
-            Session::setCurrentUser(currentUser);// 保存当前用户
-             mainWindow->updateDirectoryView(currentUser);
+            Session::setCurrentUser(currentUser); // 保存当前用户
+            mainWindow->updateDirectoryView(currentUser);
 
         } else {
             QTextStream cout(stdout);
             Utils::print("[!] Login failed. Invalid username or password.\n");
         }
-    }
-    else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+    } else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
         DBMS::createDatabase(tokens[2]);
-    }
-    else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+    } else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
         DBMS::dropDatabase(tokens[2]);
-    }
-    else if (op == "USE" && tokens.size() >= 2) {
+    } else if (op == "USE" && tokens.size() >= 2) {
         DBMS::useDatabase(tokens[1]);
-        mainWindow->updateDirectoryView(currentUser+"/"+tokens[1]);
-    }
-    else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
+        mainWindow->updateDirectoryView(currentUser + "/" + tokens[1]);
+    } else if (op == "CREATE" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
         QString tableName = tokens[2];
         int start = command.indexOf('(');
         int end = command.indexOf(')');
@@ -643,11 +891,9 @@ void interpret(const QString& command) {
             QString cols = command.mid(start + 1, end - start - 1);
             DBMS::createTable(tableName, cols);
         }
-    }
-    else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
+    } else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "TABLE") {
         DBMS::dropTable(tokens[2]);
-    }
-    else if (op == "INSERT" && tokens.size() >= 4 && tokens[1].toUpper() == "INTO") {
+    } else if (op == "INSERT" && tokens.size() >= 4 && tokens[1].toUpper() == "INTO") {
         QString tableName = tokens[2];
         int start = command.indexOf('(');
         int end = command.indexOf(')');
@@ -655,18 +901,18 @@ void interpret(const QString& command) {
             QString vals = command.mid(start + 1, end - start - 1);
             DBMS::insertInto(tableName, vals);
         }
-    }
-    else if (op == "SELECT") {
+    } else if (op == "SELECT") {
         DBMS::selectAdvanced(command);
-    }
-    else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {
+    } else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {
         QString tableName = tokens[2];
         QString condition = tokens.mid(4).join(' ');
         DBMS::deleteFrom(tableName, condition);
+    } else if(op == "ALTER"){
+        DBMS::headerManage(tokens.join(' '));
     }
     else {
         QTextStream cout(stdout);
-       Utils::print ("[!] Unknown command.\n");
+        Utils::print("[!] Unknown command.\n");
     }
 }
-}
+} // namespace Interpreter
