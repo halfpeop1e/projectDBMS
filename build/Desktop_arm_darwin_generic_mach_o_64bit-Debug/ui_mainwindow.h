@@ -40,6 +40,7 @@ public:
     QPushButton *show_database;
     QPushButton *selectall;
     QTreeView *treeView;
+    QTextBrowser *contentdisplay;
     QMenuBar *menubar;
     QMenu *menuminiDB;
     QStatusBar *statusbar;
@@ -80,7 +81,10 @@ public:
         selectall->setGeometry(QRect(200, 40, 91, 51));
         treeView = new QTreeView(centralwidget);
         treeView->setObjectName("treeView");
-        treeView->setGeometry(QRect(20, 20, 411, 571));
+        treeView->setGeometry(QRect(10, 10, 441, 321));
+        contentdisplay = new QTextBrowser(centralwidget);
+        contentdisplay->setObjectName("contentdisplay");
+        contentdisplay->setGeometry(QRect(10, 330, 441, 261));
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName("menubar");

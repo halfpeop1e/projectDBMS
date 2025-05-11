@@ -54,3 +54,44 @@ void MainWindow::updateDirectoryView(const QString &username)
     Utils::print("切换至对应界面成功");
     qDebug() << "[*] 目录切换成功:" << userPath;
 }
+void MainWindow::displayFileContent(const QModelIndex &index){
+
+        QString filePath = model->filePath(index);
+        if (QFileInfo(filePath).isFile() && filePath.endsWith(".txt")) {
+            QFile file(filePath);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&file);
+                QStringList rawLines;
+
+                while (!in.atEnd()) {
+                    rawLines.append(in.readLine());
+                }
+                if (rawLines.isEmpty()) {
+                    ui->contentdisplay->append("文件为空");
+                    return;
+                }
+                QStringList header = rawLines.first().split(",");
+                QList<int> selectedIndexes;
+                for (int i = 0; i < header.size(); ++i)
+                    selectedIndexes.append(i);
+
+                QStringList formattedResult;
+                for (const QString &line : rawLines) {
+                    QStringList fields = line.split(",");
+                    QStringList out;
+                    for (int idx : selectedIndexes)
+                        out.append(fields.value(idx));
+                    formattedResult.append(out.join(","));
+                }
+                ui->contentdisplay->append(Utils::formatAsTable(formattedResult));
+                file.close();
+            }
+        }
+    }
+
+void MainWindow::on_treeView_clicked(const QModelIndex &index)
+{
+    ui->contentdisplay->clear();
+    displayFileContent(index);
+}
+

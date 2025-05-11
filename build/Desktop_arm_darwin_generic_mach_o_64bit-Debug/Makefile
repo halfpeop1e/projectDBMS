@@ -1282,18 +1282,18 @@ compiler_moc_header_make_all: moc_mainwindow.cpp
 compiler_moc_header_clean:
 	-$(DEL_FILE) moc_mainwindow.cpp
 moc_mainwindow.cpp: ../../mainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
+		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
+		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QLabel \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qlabel.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QLineEdit \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qlineedit.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QTextBrowser \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h \
-		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
-		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
 		moc_predefs.h \
 		/opt/homebrew/share/qt/libexec/moc
 	/opt/homebrew/share/qt/libexec/moc $(DEFINES) --include /Users/fengzhu/test/build/Desktop_arm_darwin_generic_mach_o_64bit-Debug/moc_predefs.h -I/opt/homebrew/share/qt/mkspecs/macx-clang -I/Users/fengzhu/test -I/opt/homebrew/lib/QtWidgets.framework/Headers -I/opt/homebrew/lib/QtGui.framework/Headers -I/opt/homebrew/lib/QtCore.framework/Headers -I. -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/usr/include/c++/v1 -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/usr/include -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include -F/opt/homebrew/lib ../../mainwindow.h -o moc_mainwindow.cpp
@@ -1329,76 +1329,81 @@ function.o: ../../function.cpp ../../function.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o function.o ../../function.cpp
 
-interprete.o: ../../interprete.cpp ../../mainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QLabel \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qlabel.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QLineEdit \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qlineedit.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QTextBrowser \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h \
-		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
-		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
-		../../interprete.h \
+interprete.o: ../../interprete.cpp ../../interprete.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QString \
 		/opt/homebrew/lib/QtCore.framework/Headers/qstring.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QTextBrowser \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QCoreApplication \
 		/opt/homebrew/lib/QtCore.framework/Headers/qcoreapplication.h \
-		/opt/homebrew/lib/QtCore.framework/Headers/QFile \
-		/opt/homebrew/lib/QtCore.framework/Headers/qfile.h \
-		/opt/homebrew/lib/QtCore.framework/Headers/QTextStream \
-		/opt/homebrew/lib/QtCore.framework/Headers/qtextstream.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QDateTime \
 		/opt/homebrew/lib/QtCore.framework/Headers/qdatetime.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QDebug \
+		/opt/homebrew/lib/QtCore.framework/Headers/qdebug.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QDir \
 		/opt/homebrew/lib/QtCore.framework/Headers/qdir.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QFile \
+		/opt/homebrew/lib/QtCore.framework/Headers/qfile.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QRegularExpression \
 		/opt/homebrew/lib/QtCore.framework/Headers/qregularexpression.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QStringList \
 		/opt/homebrew/lib/QtCore.framework/Headers/qstringlist.h \
-		/opt/homebrew/lib/QtCore.framework/Headers/QDebug \
-		/opt/homebrew/lib/QtCore.framework/Headers/qdebug.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o interprete.o ../../interprete.cpp
-
-main.o: ../../main.cpp ../../mainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QTextStream \
+		/opt/homebrew/lib/QtCore.framework/Headers/qtextstream.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QtGlobal \
+		/opt/homebrew/lib/QtCore.framework/Headers/qglobal.h \
+		../../mainwindow.h \
+		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
+		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QLabel \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qlabel.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QLineEdit \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qlineedit.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QTextBrowser \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o interprete.o ../../interprete.cpp
+
+main.o: ../../main.cpp ../../mainwindow.h \
 		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
 		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QLabel \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qlabel.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QLineEdit \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qlineedit.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QTextBrowser \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h \
 		../../function.h \
+		../../interprete.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QString \
+		/opt/homebrew/lib/QtCore.framework/Headers/qstring.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QApplication \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qapplication.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o ../../main.cpp
 
 mainwindow.o: ../../mainwindow.cpp ../../mainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
+		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
+		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QLabel \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qlabel.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QLineEdit \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qlineedit.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qpushbutton.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QTextBrowser \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qtextbrowser.h \
-		/opt/homebrew/lib/QtGui.framework/Headers/QFileSystemModel \
-		/opt/homebrew/lib/QtGui.framework/Headers/qfilesystemmodel.h \
-		ui_mainwindow.h \
+		../../function.h \
 		../../interprete.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QString \
 		/opt/homebrew/lib/QtCore.framework/Headers/qstring.h \
-		../../function.h
+		ui_mainwindow.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o mainwindow.o ../../mainwindow.cpp
 
 moc_mainwindow.o: moc_mainwindow.cpp 

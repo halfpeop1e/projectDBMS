@@ -21,10 +21,13 @@ public:
     MainWindow(QWidget *parent = nullptr);
     void updateDirectoryView(const QString &username);
     void welcome();
+    void displayFileContent(const QModelIndex &index);
     ~MainWindow();
 
 private slots:
     void on_send_clicked();
+
+    void on_treeView_clicked(const QModelIndex &index);
 
 private:
     Ui::MainWindow *ui;

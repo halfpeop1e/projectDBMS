@@ -131,10 +131,20 @@
    <widget class="QTreeView" name="treeView">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>411</width>
-      <height>571</height>
+      <x>10</x>
+      <y>10</y>
+      <width>441</width>
+      <height>321</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QTextBrowser" name="contentdisplay">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>330</y>
+      <width>441</width>
+      <height>261</height>
      </rect>
     </property>
    </widget>

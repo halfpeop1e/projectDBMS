@@ -19,8 +19,8 @@ QTextBrowser *showinShell = nullptr;
 extern MainWindow *mainWindow;
 namespace Utils {
 QString dbRoot = "/Users/fengzhu/Resource";             // 所有数据库存放路径
-QString userFile = "/Users/fengzhu/Resource"; // 用户信息存储文件
-QString logFile = "/Users/fengzhu/Resource";    // 日志文件
+QString userFile = "/Users/fengzhu/Resource/users.txt"; // 用户信息存储文件
+QString logFile = "/Users/fengzhu/Resource/log.txt";    // 日志文件
 void setOutputShell(QTextBrowser *shell)
 {
     showinShell = shell;
@@ -431,7 +431,7 @@ void dropTable(const QString &tableName)
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
-    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +tableName
                     + "_data" +".txt";
     QFile file(path);
     QFile file2(path2);
@@ -458,7 +458,7 @@ void insertInto(const QString &tableName, const QString &values)
 
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
-    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +tableName
                    + "_data.txt";
     QFile file2(path2);
     QFile file(path);
