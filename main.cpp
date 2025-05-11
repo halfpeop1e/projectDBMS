@@ -1,6 +1,6 @@
-#include "mainwindow.h"
-#include "function.h"
 #include <QApplication>
+#include "function.h"
+#include "mainwindow.h"
 MainWindow *mainWindow = nullptr;
 int main(int argc, char *argv[])
 {

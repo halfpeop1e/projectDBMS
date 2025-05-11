@@ -1,6 +1,5 @@
 #include "function.h"
 #include "interprete.h"
-#include "interprete.h"
 function::function() {}
 
 void welcome()

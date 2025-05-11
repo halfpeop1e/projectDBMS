@@ -1,12 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
-#include<QPushButton>
-#include<QLabel>
-#include<QLineEdit>
-#include<QTextBrowser>
 #include <QFileSystemModel>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMainWindow>
+#include <QPushButton>
+#include <QTextBrowser>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -19,7 +19,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
-     void updateDirectoryView(const QString &username);
+    void updateDirectoryView(const QString &username);
     ~MainWindow();
 
 private slots:

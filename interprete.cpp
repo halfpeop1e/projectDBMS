@@ -17,9 +17,9 @@ QTextBrowser *showinShell = nullptr;
 // 工具函数区:
 extern MainWindow *mainWindow;
 namespace Utils {
-QString dbRoot = "/Users/fengzhu/Resource";             // 所有数据库存放路径
-QString userFile = "/Users/fengzhu/Resource/users.txt"; // 用户信息存储文件
-QString logFile = "/Users/fengzhu/Resource/log.txt";    // 日志文件
+QString dbRoot = "E:/dbms/Resource";             // 所有数据库存放路径
+QString userFile = "E:/dbms/Resource/users.txt"; // 用户信息存储文件
+QString logFile = "E:/dbms/Resource/log.txt";    // 日志文件
 void setOutputShell(QTextBrowser *shell)
 {
     showinShell = shell;
@@ -137,6 +137,24 @@ QString formatAsTable(const QStringList &lines)
 
     html += "</table>";
     return html;
+}
+QString getDefaultValue(const QString &type) {
+    QString upperType = type.toUpper();
+    if (upperType == "INT") {
+        return "0";
+    }
+    else if (upperType == "VARCHAR"|| upperType == "TEXT") {
+        return "''";
+    }
+    else if (upperType == "DATE") {
+        return "'2025-05-11'";
+    }
+    else if (upperType == "FLOAT" || upperType == "DOUBLE") {
+        return "0.0";
+    }
+    else {
+        return "NULL";  // 未知类型返回NULL
+    }
 }
 } // namespace Utils
 
@@ -339,15 +357,88 @@ void insertInto(const QString &tableName, const QString &values)
         Utils::print("[!] No database selected.\n");
         return;
     }
+    QRegularExpression spaceSeparated("^\\s*\\w+\\s+\\w+\\s*(,\\s*\\w+\\s+\\w+\\s*)*$");
+    QRegularExpression commaSeparated("^\\s*\\w+\\s*(,\\s*\\w+\\s*)*$");
+
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + "_data.txt";
+    QFile file2(path2);
     QFile file(path);
-    if (file.open(QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&file);
-        out << values << "\n";
-        QTextStream cout(stdout);
-        Utils::print("Inserted into '" + tableName + "'.\n");
-        Utils::writeLog("Inserted into " + tableName);
+    QStringList cols;
+    QStringList colsName;
+
+    if (file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file2);
+        QString firstline=in.readLine();
+        cols = firstline.split(",", Qt::SkipEmptyParts);
+        file2.close();
+    }
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        QString firstline=in.readLine();
+        colsName = firstline.split(",", Qt::SkipEmptyParts);
+        file.close();
+    }
+
+    if(spaceSeparated.match(values).hasMatch()){
+        QStringList pairs=values.split(",", Qt::SkipEmptyParts);
+        if(pairs.size()>cols.size()){
+            Utils::print("[!] Too many values inserted");
+            return;
+        }
+        if (file.open(QIODevice::Append | QIODevice::Text)) {
+            QTextStream out(&file);
+            QStringList rowData;
+            for (int i=0;i<cols.size();i++){
+                bool hasValue = false;
+                for (const QString &pair : pairs){
+                    QStringList keyValue = pair.trimmed().split(" ", Qt::SkipEmptyParts);
+                    if(keyValue[0]==colsName[i]){
+                        rowData<<keyValue[1];
+                        hasValue=true;
+                        break;
+                    }
+                }
+                if(!hasValue){
+                    rowData << Utils::getDefaultValue(cols[i]);
+                }
+            }
+            out << rowData.join(",")<<"\n";
+            file.close();
+            QTextStream cout(stdout);
+            Utils::print("Inserted into '" + tableName + "'.\n");
+            Utils::writeLog("Inserted into " + tableName);
+        }
+    }
+    else if(commaSeparated.match(values).hasMatch()){
+        QStringList inValues=values.split(",", Qt::SkipEmptyParts);
+        if(inValues.size()>cols.size()){
+            Utils::print("[!] Too many values inserted");
+            return;
+        }
+        if (file.open(QIODevice::Append | QIODevice::Text)){
+            QTextStream out(&file);
+            QStringList rowData;
+            for(int i=0;i<cols.size();i++){
+                if(i>=inValues.size()){
+                    rowData << Utils::getDefaultValue(cols[i]);
+                }
+                else{
+                    rowData << inValues[i];
+                }
+            }
+            out << rowData.join(",")<<"\n";
+            file.close();
+            QTextStream cout(stdout);
+            Utils::print("Inserted into '" + tableName + "'.\n");
+            Utils::writeLog("Inserted into " + tableName);
+        }
+    }
+    else{
+        Utils::print("[!] Invalid columns format. Expected format: 'name1 values1,name2 values2,...' or 'values1,values2,...'\n");
+        return;
     }
 }
 
@@ -707,7 +798,7 @@ void headerManage(const QString command){
         QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                        + ".txt";
         QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
-                        + "_data" +".txt";
+                        +"_data.txt";
         QFile file(path);
         QFile file2(path2);
 
@@ -716,41 +807,59 @@ void headerManage(const QString command){
             Utils::print("[!] Table file does not exist\n");
             return;
         }
-        file.open(QIODevice::ReadWrite | QIODevice::Text);
-        file2.open(QIODevice::ReadWrite | QIODevice::Text);
+
+        if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+            qDebug() << "Failed to open file:" << path << "Error:" << file.errorString();
+            return;
+        }
+        if (!file2.open(QIODevice::ReadWrite | QIODevice::Text)) {
+            qDebug() << "Failed to open file:" << path2 << "Error:" << file2.errorString();
+        }
+        if (extraInfo.toUpper() != "INT" &&
+            extraInfo.toUpper() != "VARCHAR" &&
+            extraInfo.toUpper() != "TEXT" &&
+            extraInfo.toUpper() != "DATE" &&
+            extraInfo.toUpper() != "FLOAT" &&
+            extraInfo.toUpper() != "DOUBLE" &&
+            extraInfo.toUpper() != "BOOLEAN"){
+
+            Utils::print("[!] Error type\n");
+            return;
+        }
 
         if (operation.toUpper() == "ADD") {
             //添加到列
             QTextStream in(&file);
             QString firstLine = in.readLine();
-            QByteArray remainingContent = file.readAll();
+            QString rest = in.readAll();
             file.resize(0);
-            file.seek(0);
+
             QTextStream out(&file);
             if (firstLine.isEmpty()) {
                 out << columnName << "\n";
             } else {
                 out << firstLine << "," << columnName << "\n";
             }
-            out << remainingContent;
+            QStringList rows = rest.split("\n", Qt::SkipEmptyParts);
+            for (QString &row : rows) {
+                out << row << "," << Utils::getDefaultValue(extraInfo) << "\n";
+            }
             file.close();
 
             //添加到列定义
             QTextStream in2(&file2);
             QString firstLine2 = in2.readLine();
-            qint64 firstLineEndPos2 = file2.pos();
-            QByteArray remainingContent2 = file2.readAll();
+            QString rest2 = in2.readAll();
             file2.resize(0);
-            file2.seek(0);
+
             QTextStream out2(&file2);
             if (firstLine2.isEmpty()) {
-                out << extraInfo << "\n";
+                out2 << extraInfo << "\n";
             } else {
-                out << firstLine2 << "," << extraInfo << "\n";
+                out2 << firstLine2 << "," << extraInfo << "\n";
             }
-            out << remainingContent2;
+            out2 << rest2;
             file2.close();
-
         }
         else if (operation.toUpper() == "MODIFY") {
             QTextStream in(&file);
@@ -840,6 +949,8 @@ void headerManage(const QString command){
             Utils::print("[+] Column '" + columnName + "' dropped successfully\n");
 
         }
+        Utils::print("Alter table: " + tableName + operation + columnName +extraInfo);
+        Utils::writeLog("Alter table: " + tableName + operation + columnName +extraInfo);
     } else {
         qDebug() << "Invalid ALTER TABLE syntax";
     }

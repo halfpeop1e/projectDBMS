@@ -1,7 +1,7 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include "interprete.h"
 #include "function.h"
+#include "interprete.h"
+#include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -13,9 +13,7 @@ MainWindow::MainWindow(QWidget *parent)
     model->setRootPath("");
     ui->treeView->setModel(model);
     ui->treeView->setRootIndex(model->index(""));
-
 }
-
 
 MainWindow::~MainWindow()
 {
@@ -31,7 +29,7 @@ void MainWindow::on_send_clicked()
 }
 void MainWindow::updateDirectoryView(const QString &username)
 {
-    QString userPath = Utils::dbRoot+"/"+username;
+    QString userPath = Utils::dbRoot + "/" + username;
     QDir dir(userPath);
     if (!dir.exists()) {
         Utils::print("切换至对应界面失败");
@@ -44,5 +42,3 @@ void MainWindow::updateDirectoryView(const QString &username)
     Utils::print("切换至对应界面成功");
     qDebug() << "[*] 目录切换成功:" << userPath;
 }
-
-
