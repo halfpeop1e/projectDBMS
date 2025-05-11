@@ -13,19 +13,24 @@ MainWindow::MainWindow(QWidget *parent)
     model->setRootPath("");
     ui->treeView->setModel(model);
     ui->treeView->setRootIndex(model->index(""));
-    QString Welcomemessage=R"(##############################################
-  _____  ____  __  __  _____
- |  __ \|  _ \|  \/  |/ ____|
- | |  | | |_) | \  / | (___
- | |  | |  _ <| |\/| |\___ \
- | |__| | |_) | |  | |____) |
- |_____/|____/|_|  |_|_____/
+    QString Welcomemessage=R"(
+##############################################
+          _____  ____  __  __  _____
+         |  __ \|  _ \|  \/  |/ ____|
+         | |  | | |_) | \  / | (___
+         | |  | |  _ <| |\/| |\___ \
+         | |__| | |_) | |  | |____) |
+         |_____/|____/|_|  |_|_____/
 
-       -> help:语法帮助 <-
+               -> help:语法帮助 <-
+                   github链接：
+ https://github.com/halfpeop1e/projectDBMS.git
 
  ##############################################)";
     ui->shell->append(Welcomemessage);
     ui->shell->setFont(QFont("Courier New", 13));
+    connect(ui->input, &QLineEdit::returnPressed,
+            this, &MainWindow::on_send_clicked);
 }
 
 MainWindow::~MainWindow()
