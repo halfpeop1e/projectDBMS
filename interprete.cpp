@@ -9,7 +9,7 @@
 #include <QStringList>
 #include <QDebug>
 #include <QTextBrowser>
-
+#include <QtGlobal>
 // 全局变量
 QString currentUser;
 QString usingDatabase;
@@ -67,6 +67,67 @@ bool ensureDirExists(const QString& path) {
         return dir.mkpath(".");
     }
     return true;
+}
+QString formatAsTable(const QStringList& lines) {
+    if (lines.isEmpty()) return "";
+
+    // 1. 解析数据并检测数字列
+    QList<QStringList> table;
+    QList<bool> isNumericCol;
+
+    // 第一行是表头（非数字列）
+    if (!lines.isEmpty()) {
+        QStringList header = lines.first().split(",", Qt::KeepEmptyParts);
+        isNumericCol.fill(false, header.size());
+        table.append(header);
+    }
+
+    // 检测数字列（从第二行开始）
+    for (int i = 1; i < lines.size(); ++i) {
+        QStringList fields = lines[i].split(",", Qt::KeepEmptyParts);
+        table.append(fields);
+
+        for (int j = 0; j < fields.size() && j < isNumericCol.size(); ++j) {
+            if (!isNumericCol[j]) {
+                bool ok;
+                fields[j].trimmed().toDouble(&ok);
+                isNumericCol[j] = ok;
+            }
+        }
+    }
+
+    // 2. 生成HTML表格
+    QString html = "<table style='border-collapse: collapse; font-family: monospace; width: 100%;'>\n";
+
+    // 表头行（加粗居中）
+    html += "  <tr style='background-color: #f0f0f0;'>\n";
+    for (int j = 0; j < table[0].size(); ++j) {
+        html += QString("    <th style='border: 1px solid black; padding: 4px;'>%1</th>\n")
+        .arg(table[0][j].trimmed());
+    }
+    html += "  </tr>\n";
+
+    // 数据行
+    for (int i = 1; i < table.size(); ++i) {
+        html += "  <tr>\n";
+        for (int j = 0; j < table[i].size(); ++j) {
+            QString align = (j < isNumericCol.size() && isNumericCol[j]) ? "right" : "left";
+            QString content = table[i][j].trimmed().isEmpty() ? "&nbsp;" : table[i][j].trimmed();
+
+            // 转义HTML特殊字符
+            content.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+
+            html += QString("    <td style='border: 1px solid black; padding: 4px; text-align: %1;'>%2</td>\n")
+                        .arg(align)
+                        .arg(content);
+        }
+        html += "  </tr>\n";
+    }
+
+    html += "</table>";
+    return html;
 }
 }
 
@@ -222,20 +283,18 @@ void insertInto(const QString& tableName, const QString& values) {
 
 void selectFrom(const QString& tableName) {
     if (usingDatabase.isEmpty()) {
-        QTextStream cout(stdout);
-       Utils::print ("[!] No database selected.\n");
+        Utils::print("[!] No database selected.\n");
         return;
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
-        QTextStream cout(stdout);
-       Utils::print ("==== " + tableName + " ====\n");
+        QStringList lines;
         while (!in.atEnd()) {
-           Utils::print( in.readLine() + "\n");
+            lines.append(in.readLine());
         }
-       Utils::print ("====================\n");
+        Utils::print(Utils::formatAsTable(lines));
         Utils::writeLog("Selected from " + tableName);
     }
 }
@@ -282,25 +341,6 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
 
         while (!in1.atEnd()) rows1.append(in1.readLine().split(","));
         while (!in2.atEnd()) rows2.append(in2.readLine().split(","));
-        Utils::print("[DEBUG] Students file content: ");
-        Utils::print(header1.join(","));
-        for (const QStringList& row : rows1) {
-            Utils::print(row.join(","));
-        }
-
-        Utils::print("[DEBUG] People file content: ");
-        Utils::print(header2.join(","));
-        for (const QStringList& row : rows2) {
-            Utils::print(row.join(","));
-        }
-        Utils::print("[DEBUG] Matching students.id = people.id");
-        for (const QStringList& r1 : rows1) {
-            for (const QStringList& r2 : rows2) {
-                if (r1[header1.indexOf("id")] == r2[header2.indexOf("id")]) {
-                    Utils::print("[DEBUG] Match found: " + r1.join(",") + " + " + r2.join(","));
-                }
-            }
-        }
         int idx1 = header1.indexOf(leftField);
         int idx2 = header2.indexOf(rightField);
 
@@ -339,19 +379,52 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
         filtered.append(headerLine);
 
         QString col, val;
-        if (whereClause.contains("=")) {
-            QStringList cond = whereClause.split("=");
-            col = cond[0].trimmed();
-            val = cond[1].trimmed();
+
+        QRegularExpression re(R"((\w+)\s*(<=|>=|=|<|>)\s*(.+))");
+        QRegularExpressionMatch match = re.match(whereClause.trimmed());
+
+        if (match.hasMatch()) {
+             col = match.captured(1).trimmed();
+            QString op = match.captured(2).trimmed();
+             val = match.captured(3).trimmed();
+
+            int index = header.indexOf(col);
+            if (index == -1) {
+                qWarning() << "Column not found:" << col;
+            } else {
+                for (const QString& line : rawLines) {
+                    QStringList fields = line.split(",");
+                    QString fieldVal = fields.value(index).trimmed();
+
+                    // Try numeric comparison first, fallback to string
+                    bool ok1, ok2;
+                    double fieldNum = fieldVal.toDouble(&ok1);
+                    double valNum = val.toDouble(&ok2);
+
+                    bool match = false;
+                    if (ok1 && ok2) {
+                        if (op == "=") match = (fieldNum == valNum);
+                        else if (op == "<") match = (fieldNum < valNum);
+                        else if (op == ">") match = (fieldNum > valNum);
+                        else if (op == "<=") match = (fieldNum <= valNum);
+                        else if (op == ">=") match = (fieldNum >= valNum);
+                    } else {
+                        if (op == "=") match = (fieldVal == val);
+                        else if (op == "<") match = (fieldVal < val);
+                        else if (op == ">") match = (fieldVal > val);
+                        else if (op == "<=") match = (fieldVal <= val);
+                        else if (op == ">=") match = (fieldVal >= val);
+                    }
+
+                    if (match) {
+                        filtered.append(line);
+                    }
+                }
+            }
+
         }
 
-        int index = header.indexOf(col);
-        for (const QString& line : rawLines) {
-            QStringList fields = line.split(",");
-            if (fields.value(index).trimmed() == val) {
-                filtered.append(line);
-            }
-        }
+
         rawLines = filtered;
     }
 
@@ -407,14 +480,16 @@ void selectAdvancedInternal(const QString& query, QStringList& result) {
             selectedIndexes.append(index);
         }
     }
-
+    QStringList formattedResult;
     for (const QString& line : rawLines) {
         QStringList fields = line.split(",");
         QStringList out;
         for (int idx : selectedIndexes)
             out.append(fields.value(idx));
-        result.append(out.join(","));
+        formattedResult.append(out.join(","));
     }
+
+    result = formattedResult;
 }
 void selectAdvanced(const QString& command) {
     if (usingDatabase.isEmpty()) {
@@ -424,6 +499,8 @@ void selectAdvanced(const QString& command) {
 
     // 简单解析：支持单个 SELECT 语句，支持 UNION、JOIN、WHERE、ORDER BY、GROUP BY
     QString query = command.trimmed();
+    QStringList result;
+
 
     // UNION 查询
     if (query.contains("UNION", Qt::CaseInsensitive)) {
@@ -456,17 +533,15 @@ void selectAdvanced(const QString& command) {
 
         // 输出所有结果
         Utils::print("==== UNION RESULT ====");
-        for (const QString& line : allResults)
-            Utils::print(line);
+       Utils::print(Utils::formatAsTable(allResults));
+        return;
         return;
     }
 
     // 普通 SELECT
-    QStringList result;
     selectAdvancedInternal(query, result);
     Utils::print("==== SELECT RESULT ====");
-    for (const QString& line : result)
-        Utils::print(line);
+    Utils::print(Utils::formatAsTable(result));
 }
 
 

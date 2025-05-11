@@ -13,6 +13,7 @@ void showHelp();
 bool ensureDirExists(const QString& path);
 void setOutputShell(QTextBrowser* shell);
 void print(const QString& msg);
+QString formatAsTable(const QStringList& lines);
 
 }
 
