@@ -80,44 +80,44 @@
       <rect>
        <x>110</x>
        <y>40</y>
-       <width>91</width>
+       <width>101</width>
        <height>51</height>
       </rect>
      </property>
      <property name="text">
-      <string>清除</string>
+      <string>快捷删除</string>
      </property>
     </widget>
     <widget class="QPushButton" name="load">
      <property name="geometry">
       <rect>
-       <x>290</x>
+       <x>300</x>
        <y>40</y>
        <width>91</width>
        <height>51</height>
       </rect>
      </property>
      <property name="text">
-      <string>加载</string>
+      <string>加载表</string>
      </property>
     </widget>
     <widget class="QPushButton" name="show_database">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>40</y>
-       <width>91</width>
+       <width>101</width>
        <height>51</height>
       </rect>
      </property>
      <property name="text">
-      <string>数据库</string>
+      <string>数据库快捷添加</string>
      </property>
     </widget>
     <widget class="QPushButton" name="selectall">
      <property name="geometry">
       <rect>
-       <x>200</x>
+       <x>210</x>
        <y>40</y>
        <width>91</width>
        <height>51</height>
@@ -127,14 +127,76 @@
       <string>全选</string>
      </property>
     </widget>
+    <widget class="QLineEdit" name="fastinput">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>130</y>
+       <width>151</width>
+       <height>31</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="comfirm">
+     <property name="geometry">
+      <rect>
+       <x>170</x>
+       <y>130</y>
+       <width>51</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>确定</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="cancel">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>130</y>
+       <width>51</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>取消</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="inputDBname">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>110</y>
+       <width>111</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>请输入数据库名！</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QTreeView" name="treeView">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>411</width>
-      <height>571</height>
+      <x>10</x>
+      <y>10</y>
+      <width>441</width>
+      <height>321</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QTextBrowser" name="contentdisplay">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>330</y>
+      <width>441</width>
+      <height>261</height>
      </rect>
     </property>
    </widget>
