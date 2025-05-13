@@ -2,7 +2,12 @@
 #include "function.h"
 #include "interprete.h"
 #include "ui_mainwindow.h"
-
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QFile>
+#include <QDir>
+#include <QProgressDialog>
+QString fastlink;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -13,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     model->setRootPath("");
     ui->treeView->setModel(model);
     ui->treeView->setRootIndex(model->index(""));
+    ui->inputDBname->hide();
     QString Welcomemessage=R"(
 ##############################################
           _____  ____  __  __  _____
@@ -98,5 +104,89 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index)
 {
     ui->contentdisplay->clear();
     displayFileContent(index);
+}
+
+
+void MainWindow::on_show_database_clicked()
+{
+    fastlink=Utils::dbRoot+"/"+currentUser;
+    ui->inputDBname->show();
+}
+
+void MainWindow::on_comfirm_clicked()
+{
+    Utils::setOutputShell(ui->shell);
+    Interpreter::interpret("CREATE DATABASE "+ui->fastinput->text());
+    ui->fastinput->clear();
+}
+
+
+void MainWindow::on_cancel_clicked()
+{
+    fastlink="";
+    ui->inputDBname->hide();
+    ui->fastinput->clear();
+}
+
+
+
+
+void MainWindow::on_load_clicked()
+{
+    if (!Auth::checkPermission(Auth::ADMIN)) {
+        Utils::setOutputShell(ui->shell);
+        Utils::print("[!]请求无效，需要ADMIN权限.\n");
+        return;
+    }
+    else{
+        QStringList filePaths = QFileDialog::getOpenFileNames(
+            this,
+            tr("选择文本文件"),
+            QDir::homePath(),
+            tr("文本文件 (*.txt)")
+            );
+
+        if(filePaths.isEmpty()) {
+            return; // 用户取消了选择
+        }
+        QString destDir = Utils::dbRoot+"/"+currentUser+"/"+usingDatabase;
+        QDir dir(destDir);
+        if(!dir.exists()) {
+            dir.mkpath(".");
+        }
+        QProgressDialog progress("正在加载...", "取消", 0, filePaths.size(), this);
+        progress.setWindowModality(Qt::WindowModal);
+        int successCount = 0;
+        for(int i = 0; i < filePaths.size(); i++) {
+            progress.setValue(i);
+            progress.setLabelText(QString("正在处理文件 %1/%2")
+                                      .arg(i+1).arg(filePaths.size()));
+
+            if(progress.wasCanceled())
+                break;
+
+            QFileInfo fileInfo(filePaths[i]);
+            QString destPath = destDir + "/" + fileInfo.fileName();
+
+            // 检查文件是否已存在
+            if(QFile::exists(destPath)) {
+                QFile::remove(destPath);
+            }
+
+            if(QFile::copy(filePaths[i], destPath)) {
+                successCount++;
+            } else {
+                QMessageBox::warning(this, tr("错误"),
+                                     tr("无法复制文件: %1").arg(fileInfo.fileName()));
+            }
+        }
+
+        progress.setValue(filePaths.size());
+        QMessageBox::information(this, tr("完成"),
+                                 tr("成功复制 %1/%2 个文件到目录:\n%3")
+                                     .arg(successCount)
+                                     .arg(filePaths.size())
+                                     .arg(destDir));
+    }
 }
 

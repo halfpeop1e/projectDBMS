@@ -7,6 +7,7 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QTextBrowser>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -28,6 +29,14 @@ private slots:
     void on_send_clicked();
 
     void on_treeView_clicked(const QModelIndex &index);
+
+    void on_show_database_clicked();
+
+    void on_cancel_clicked();
+
+    void on_comfirm_clicked();
+
+    void on_load_clicked();
 
 private:
     Ui::MainWindow *ui;

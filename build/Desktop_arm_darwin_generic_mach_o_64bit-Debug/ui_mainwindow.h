@@ -14,6 +14,7 @@
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QHeaderView>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
@@ -39,6 +40,10 @@ public:
     QPushButton *load;
     QPushButton *show_database;
     QPushButton *selectall;
+    QLineEdit *fastinput;
+    QPushButton *comfirm;
+    QPushButton *cancel;
+    QLabel *inputDBname;
     QTreeView *treeView;
     QTextBrowser *contentdisplay;
     QMenuBar *menubar;
@@ -79,6 +84,19 @@ public:
         selectall = new QPushButton(functionarea);
         selectall->setObjectName("selectall");
         selectall->setGeometry(QRect(200, 40, 91, 51));
+        fastinput = new QLineEdit(functionarea);
+        fastinput->setObjectName("fastinput");
+        fastinput->setGeometry(QRect(20, 130, 151, 31));
+        comfirm = new QPushButton(functionarea);
+        comfirm->setObjectName("comfirm");
+        comfirm->setGeometry(QRect(170, 130, 51, 31));
+        cancel = new QPushButton(functionarea);
+        cancel->setObjectName("cancel");
+        cancel->setGeometry(QRect(220, 130, 51, 31));
+        inputDBname = new QLabel(functionarea);
+        inputDBname->setObjectName("inputDBname");
+        inputDBname->setEnabled(true);
+        inputDBname->setGeometry(QRect(20, 110, 111, 16));
         treeView = new QTreeView(centralwidget);
         treeView->setObjectName("treeView");
         treeView->setGeometry(QRect(10, 10, 441, 321));
@@ -111,9 +129,12 @@ public:
         send->setText(QCoreApplication::translate("MainWindow", "\347\241\256\345\256\232", nullptr));
         functionarea->setTitle(QCoreApplication::translate("MainWindow", "\345\212\237\350\203\275\345\214\272", nullptr));
         clear->setText(QCoreApplication::translate("MainWindow", "\346\270\205\351\231\244", nullptr));
-        load->setText(QCoreApplication::translate("MainWindow", "\345\212\240\350\275\275", nullptr));
+        load->setText(QCoreApplication::translate("MainWindow", "\345\212\240\350\275\275\350\241\250", nullptr));
         show_database->setText(QCoreApplication::translate("MainWindow", "\346\225\260\346\215\256\345\272\223", nullptr));
         selectall->setText(QCoreApplication::translate("MainWindow", "\345\205\250\351\200\211", nullptr));
+        comfirm->setText(QCoreApplication::translate("MainWindow", "\347\241\256\345\256\232", nullptr));
+        cancel->setText(QCoreApplication::translate("MainWindow", "\345\217\226\346\266\210", nullptr));
+        inputDBname->setText(QCoreApplication::translate("MainWindow", "\350\257\267\350\276\223\345\205\245\346\225\260\346\215\256\345\272\223\345\220\215\357\274\201", nullptr));
         menuminiDB->setTitle(QCoreApplication::translate("MainWindow", "miniDB", nullptr));
     } // retranslateUi
 
