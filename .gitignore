@@ -1,0 +1,17 @@
+# Qt
+build*/
+*.pro.user
+*.autosave
+*.user
+*.user.*
+
+# 编译生成文件
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.app
+
+# 系统文件
+.DS_Store

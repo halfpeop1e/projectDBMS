@@ -30,7 +30,6 @@ bool ensureDirExists(const QString &path);
 void setOutputShell(QTextBrowser *shell);
 void print(const QString &msg);
 QString formatAsTable(const QStringList &lines);
-QString getDefaultValue(const QString &type);
 } // namespace Utils
 
 namespace User {

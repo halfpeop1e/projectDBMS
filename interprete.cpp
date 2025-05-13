@@ -142,24 +142,6 @@ QString formatAsTable(const QStringList &lines)
     html += "</table>";
     return html;
 }
-QString getDefaultValue(const QString &type) {
-    QString upperType = type.toUpper();
-    if (upperType == "INT") {
-        return "0";
-    }
-    else if (upperType == "VARCHAR"|| upperType == "TEXT") {
-        return "''";
-    }
-    else if (upperType == "DATE") {
-        return "'2025-05-11'";
-    }
-    else if (upperType == "FLOAT" || upperType == "DOUBLE") {
-        return "0.0";
-    }
-    else {
-        return "NULL";  // 未知类型返回NULL
-    }
-}
 } // namespace Utils
 
 namespace Session {
@@ -586,19 +568,36 @@ void insertInto(const QString &tableName, const QString &values)
     QStringList cols;
     QStringList colsName;
     QStringList colsKeys;
+    QStringList colDefault;
+    QVector<QSet<QString>> columnSets;
 
     if (file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file2);
         QString firstline=in.readLine();
         QString secondline=in.readLine();
+        QString thirdline=in.readLine();
         cols = firstline.split(",", Qt::SkipEmptyParts);
         colsKeys = secondline.split(",", Qt::SkipEmptyParts);
+        colDefault = thirdline.split(",",Qt::SkipEmptyParts);
         file2.close();
     }
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
         QString firstline=in.readLine();
         colsName = firstline.split(",", Qt::SkipEmptyParts);
+        columnSets.resize(colsName.size());
+        while (!in.atEnd()){
+            QString getLine=in.readLine();
+            QStringList contends=getLine.split(",", Qt::SkipEmptyParts);
+            for(int col=0;col<contends.size();col++){
+                columnSets[col].insert(contends[col]);
+            }
+            for(int col=0;col<contends.size();col++){
+                if(columnSets[col].find("NULL")!=columnSets[col].end()){
+                    columnSets[col].remove("NULL");
+                }
+            }
+        }
         file.close();
     }
 
@@ -612,18 +611,58 @@ void insertInto(const QString &tableName, const QString &values)
         if (file.open(QIODevice::Append | QIODevice::Text)) {
             QTextStream out(&file);
             QStringList rowData;
+            int defaultID=0;
             for (int i=0;i<cols.size();i++){
                 bool hasValue = false;
                 for (const QString &pair : pairs){
                     QStringList keyValue = pair.trimmed().split(" ", Qt::SkipEmptyParts);
                     if(keyValue[0]==colsName[i]){
+                        if(keyValue[1].toUpper()=="NULL"){
+                            keyValue[1]="NULL";
+                        }
+                        if(!colsKeys[i].contains("0")){
+                            if(colsKeys[i].contains("1")){
+                                if(columnSets[i].find(keyValue[1])!=columnSets[i].end()){
+                                    Utils::print("[!] 主键"+colsName[i]+"不能拥有重复值");
+                                    return;
+                                }
+                                if(keyValue[1]=="NULL"){
+                                    Utils::print("[!] 主键"+colsName[i]+"不能为空值");
+                                    return;
+                                }
+                            }
+                            if(colsKeys[i].contains("2")){
+                                if(keyValue[1]=="NULL"){
+                                    Utils::print("[!] "+colsName[i]+"不能为空值");
+                                    return;
+                                }
+                            }
+                            if(colsKeys[i].contains("3")){
+                                if(columnSets[i].find(keyValue[1])!=columnSets[i].end()){
+                                    Utils::print("[!] "+colsName[i]+":不能拥有重复值");
+                                    return;
+                                }
+                            }
+                        }
                         rowData<<keyValue[1];
+                        if(colsKeys[i].contains("4")){
+                            defaultID++;
+                        }
                         hasValue=true;
                         break;
                     }
                 }
                 if(!hasValue){
-                    rowData << Utils::getDefaultValue(cols[i]);
+                    if(colsKeys[i].contains("2")||colsKeys[i].contains("1")){
+                        Utils::print("[!] "+colsName[i]+"不能为空值");
+                        return;
+                    }
+                    if(colsKeys[i].contains("4")){
+                        rowData << colDefault[defaultID++];
+                    }
+                    else{
+                        rowData <<"NULL";
+                    }
                 }
             }
             out << rowData.join(",")<<"\n";
@@ -640,17 +679,42 @@ void insertInto(const QString &tableName, const QString &values)
             Utils::print("[!] Too many values inserted");
             return;
         }
+        if(inValues.size()<cols.size()){
+            Utils::print("[!] Too less values inserted");
+            return;
+        }
         if (file.open(QIODevice::Append | QIODevice::Text)){
             QTextStream out(&file);
             QStringList rowData;
             for(int i=0;i<cols.size();i++){
-                if(i>=inValues.size()){
-
-                    rowData << Utils::getDefaultValue(cols[i]);
+                if(inValues[i].toUpper()=="NULL"){
+                    inValues[i]="NULL";
                 }
-                else{
-                    rowData << inValues[i];
+                if(!colsKeys[i].contains("0")){
+                    if(colsKeys[i].contains("1")){
+                        if(columnSets[i].find(inValues[i])!=columnSets[i].end()){
+                            Utils::print("[!] 主键"+colsName[i]+"不能拥有重复值");
+                            return;
+                        }
+                        if(inValues[i].toUpper()=="NULL"){
+                            Utils::print("[!] 主键"+colsName[i]+"不能为空值");
+                            return;
+                        }
+                    }
+                    if(colsKeys[i].contains("2")){
+                        if(inValues[i].toUpper()=="NULL"){
+                            Utils::print("[!] "+colsName[i]+"不能为空值");
+                            return;
+                        }
+                    }
+                    if(colsKeys[i].contains("3")){
+                        if(columnSets[i].find(inValues[i])!=columnSets[i].end()){
+                            Utils::print("[!] "+colsName[i]+":不能拥有重复值");
+                            return;
+                        }
+                    }
                 }
+                rowData << inValues[i];
             }
             out << rowData.join(",")<<"\n";
             file.close();
@@ -1072,7 +1136,7 @@ void headerManage(const QString command){
             }
             QStringList rows = rest.split("\n", Qt::SkipEmptyParts);
             for (QString &row : rows) {
-                out << row << "," << Utils::getDefaultValue(extraInfo) << "\n";
+                out << row << "," << "NULL" << "\n";
             }
             file.close();
 
