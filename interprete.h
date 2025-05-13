@@ -50,6 +50,19 @@ void selectAdvanced(const QString &command);
 void selectAdvancedInternal(const QString &query, QStringList &result);
 void deleteFrom(const QString &tableName, const QString &condition);
 void headerManage(const QString command);
+class IndexManager {
+public:
+    IndexManager(const QString& user, const QString& db);
+    bool createIndex(const QString& tableName, const QString& columnName, const QString& indexType);
+    bool dropIndex(const QString& tableName, const QString& columnName);
+    QVector<qint64> queryWithIndex(const QString& tableName, const QString& columnName, const QString& key);
+    bool indexExists(const QString& tableName, const QString& columnName);
+private:
+    QString getIndexPath(const QString& tableName, const QString& columnName);
+    bool buildIndex(const QString& tableName, const QString& columnName, const QString& indexType);
+    QString currentUser;
+    QString usingDatabase;
+};
 } // namespace DBMS
 
 namespace Interpreter {

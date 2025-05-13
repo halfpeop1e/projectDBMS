@@ -18,9 +18,9 @@ QTextBrowser *showinShell = nullptr;
 // 工具函数区:
 extern MainWindow *mainWindow;
 namespace Utils {
-QString dbRoot = "/Users/fengzhu/Resource";             // 所有数据库存放路径
-QString userFile = "/Users/fengzhu/Resource/users.txt"; // 用户信息存储文件
-QString logFile = "/Users/fengzhu/Resource/log.txt";    // 日志文件
+QString dbRoot = "D:/dbmssource";             // 所有数据库存放路径
+QString userFile = "D:/dbmssource/users.txt"; // 用户信息存储文件
+QString logFile = "D:/dbmssource/log.txt";    // 日志文件
 void setOutputShell(QTextBrowser *shell)
 {
     showinShell = shell;
@@ -68,6 +68,8 @@ void showHelp()
     print("SELECT col1,col2.... FROM tablename WHERE ...\n");
     print("DELETE FROM tablename WHERE col=value\n");
     print("ALTER TABLE tablename ADD/DROP/MODIFY columnname (type);\n");
+    print("CREATE INDEX BTREE|HASH ON table(column) - 创建索引\n");
+    print("DROP INDEX table.column - 删除索引\n");
     print("EXIT / QUIT\n\n");
 }
 
@@ -290,9 +292,12 @@ namespace DBMS {
 void createDatabase(const QString &dbName)
 {
     QString path = Utils::dbRoot + "/" + currentUser + "/" + dbName;
-    QString typepath=Utils::dbRoot + "/" + currentUser + "/" + dbName+"/"+"DATATYPE";
-    if (Utils::ensureDirExists(path)&&Utils::ensureDirExists(typepath)) {
-        QTextStream cout(stdout);
+    QString typepath = Utils::dbRoot + "/" + currentUser + "/" + dbName + "/" + "DATATYPE";
+    QString indexpath = Utils::dbRoot + "/" + currentUser + "/" + dbName + "/" + "INDEXES";
+
+    if (Utils::ensureDirExists(path) &&
+        Utils::ensureDirExists(typepath) &&
+        Utils::ensureDirExists(indexpath)) {
         Utils::print("数据库 '" + dbName + "' 已创建.\n");
         Utils::writeLog("Created database " + dbName);
     }
@@ -670,6 +675,33 @@ void insertInto(const QString &tableName, const QString &values)
             QTextStream cout(stdout);
             Utils::print("Inserted into '" + tableName + "'.\n");
             Utils::writeLog("Inserted into " + tableName);
+
+            qint64 insertPos = file.pos() - rowData.join(",").length() - 1;
+            file.close();
+
+            // 更新所有索引
+            QString indexPath = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/INDEXES/";
+            QDir indexDir(indexPath);
+
+            foreach (QString indexFile, indexDir.entryList(QStringList() << tableName + "_*.idx")) {
+                QString columnName = indexFile.mid(tableName.length() + 1, indexFile.length() - tableName.length() - 5);
+                int columnIndex = colsName.indexOf(columnName);
+
+                if (columnIndex != -1) {
+                    QString keyValue = rowData[columnIndex];
+                    QString fullIndexPath = indexPath + indexFile;
+
+                    QFile idxFile(fullIndexPath);
+                    if (idxFile.open(QIODevice::Append | QIODevice::Text)) {
+                        QTextStream out(&idxFile);
+                        out << keyValue << ":" << insertPos << "\n";
+                        idxFile.close();
+                    }
+                }
+            }
+
+            Utils::print("Inserted into '" + tableName + "'.\n");
+            Utils::writeLog("Inserted into " + tableName);
         }
     }
     //类似(value,value,...)的输入
@@ -826,6 +858,40 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         rawLines.append(header);
         while (!in.atEnd()) {
             rawLines.append(in.readLine());
+        }
+    }
+
+    if (!whereClause.isEmpty()) {
+        QRegularExpression re(R"((\w+)\s*(<=|>=|=|<|>)\s*(.+))");
+        QRegularExpressionMatch match = re.match(whereClause.trimmed());
+
+        if (match.hasMatch() && match.captured(2) == "=") {
+            QString col = match.captured(1).trimmed();
+            QString val = match.captured(3).trimmed().replace("'", "").replace("\"", "");
+
+            DBMS::IndexManager idxManager(currentUser, usingDatabase);
+            if (idxManager.indexExists(table1, col)) {
+                QVector<qint64> locations = idxManager.queryWithIndex(table1, col, val);
+
+                if (!locations.isEmpty()) {
+                    QString tablePath = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
+                    QFile tableFile(tablePath);
+
+                    if (tableFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                        QTextStream in(&tableFile);
+                        QString header = in.readLine();
+                        result.append(header);
+
+                        for (qint64 pos : locations) {
+                            tableFile.seek(pos);
+                            result.append(in.readLine());
+                        }
+
+                        tableFile.close();
+                        return;
+                    }
+                }
+            }
         }
     }
 
@@ -1258,6 +1324,115 @@ void headerManage(const QString command){
         qDebug() << "Invalid ALTER TABLE syntax";
        }
 }
+IndexManager::IndexManager(const QString& user, const QString& db)
+    : currentUser(user), usingDatabase(db) {
+    QString indexPath = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/INDEXES";
+    QDir().mkpath(indexPath);
+}
+
+QString IndexManager::getIndexPath(const QString& tableName, const QString& columnName) {
+    return Utils::dbRoot + "/" + currentUser + "/" + usingDatabase +
+           "/INDEXES/" + tableName + "_" + columnName + ".idx";
+}
+
+bool IndexManager::createIndex(const QString& tableName, const QString& columnName, const QString& indexType) {
+    QString indexPath = getIndexPath(tableName, columnName);
+    QFile indexFile(indexPath);
+
+    if (indexFile.exists()) {
+        Utils::print("[!] 索引已存在");
+        return false;
+    }
+
+    if (indexFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&indexFile);
+        out << "INDEX_TYPE:" << indexType << "\n";
+        out << "TABLE:" << tableName << "\n";
+        out << "COLUMN:" << columnName << "\n";
+        indexFile.close();
+        return buildIndex(tableName, columnName, indexType);
+    }
+    return false;
+}
+
+bool IndexManager::buildIndex(const QString& tableName, const QString& columnName, const QString& indexType) {
+    QString tablePath = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
+    QFile tableFile(tablePath);
+
+    if (!tableFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    QTextStream in(&tableFile);
+    QStringList headers = in.readLine().split(",");
+    int columnIndex = headers.indexOf(columnName);
+
+    if (columnIndex == -1) {
+        Utils::print("[!] 表中未发现字段");
+        return false;
+    }
+
+    QString indexPath = getIndexPath(tableName, columnName);
+    QFile indexFile(indexPath);
+
+    if (!indexFile.open(QIODevice::Append | QIODevice::Text)) {
+        return false;
+    }
+
+    QTextStream out(&indexFile);
+    qint64 lineOffset = tableFile.pos();
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList values = line.split(",");
+        QString key = values.value(columnIndex).trimmed();
+        out << key << ":" << lineOffset << "\n";
+        lineOffset = tableFile.pos();
+    }
+
+    indexFile.close();
+    tableFile.close();
+    Utils::print("[+] 成功创建索引");
+    return true;
+}
+
+QVector<qint64> IndexManager::queryWithIndex(const QString& tableName, const QString& columnName, const QString& key) {
+    QVector<qint64> results;
+    QString indexPath = getIndexPath(tableName, columnName);
+    QFile indexFile(indexPath);
+
+    if (!indexFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return results;
+    }
+
+    indexFile.readLine(); // Skip metadata
+    while (!indexFile.atEnd()) {
+        QString line = indexFile.readLine();
+        QStringList parts = line.split(":");
+        if (parts.size() == 2 && parts[0].trimmed() == key) {
+            results.append(parts[1].trimmed().toLongLong());
+        }
+    }
+
+    indexFile.close();
+    return results;
+}
+
+bool IndexManager::dropIndex(const QString& tableName, const QString& columnName) {
+    QString indexPath = getIndexPath(tableName, columnName);
+    if (QFile::remove(indexPath)) {
+        Utils::print("[+] 删除索引成功");
+        return true;
+    }
+    Utils::print("[!] 删除索引失败");
+    return false;
+}
+
+bool IndexManager::indexExists(const QString& tableName, const QString& columnName) {
+    QString indexPath = getIndexPath(tableName, columnName);
+    return QFile::exists(indexPath);
+}
+
 } // namespace DBMS
 
 // 解释器模块
@@ -1365,8 +1540,7 @@ void interpret(const QString &command)
     } else if (op == "SELECT") {
         DBMS::selectAdvanced(command);
 
-    }
-    else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {
+    }else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {
         if (!Auth::checkPermission(Auth::ADMIN)) {
             Utils::print("[!]请求无效，需要ADMIN权限.\n");
             return;
@@ -1380,6 +1554,53 @@ void interpret(const QString &command)
             return;
         }
         DBMS::headerManage(tokens.join(' '));
+    }else if (op == "CREATE" && tokens.size() >= 4 && tokens[1].toUpper() == "INDEX") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!] 需要ADMIN权限.\n");
+            return;
+        }
+
+        QRegularExpression re("CREATE\\s+INDEX\\s+(\\w+)\\s+ON\\s+(\\w+)\\((\\w+)\\)",
+                              QRegularExpression::CaseInsensitiveOption);
+        QRegularExpressionMatch match = re.match(command);
+
+        if (match.hasMatch()) {
+            QString indexType = match.captured(1).toUpper();
+            QString tableName = match.captured(2);
+            QString columnName = match.captured(3);
+
+            if (indexType != "BTREE" && indexType != "HASH") {
+                Utils::print("[!] 无效的索引类型，支持 BTREE 或 HASH\n");
+                return;
+            }
+
+            DBMS::IndexManager idxManager(currentUser, usingDatabase);
+            if (idxManager.createIndex(tableName, columnName, indexType)) {
+                Utils::print("[+] 索引创建成功\n");
+            } else {
+                Utils::print("[!] 索引创建失败\n");
+            }
+        } else {
+            Utils::print("[!] 无效的CREATE INDEX语法\n");
+        }
+    }else if (op == "DROP" && tokens.size() >= 3 && tokens[1].toUpper() == "INDEX") {
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!] 需要ADMIN权限.\n");
+            return;
+        }
+
+        QStringList parts = tokens[2].split(".");
+        if (parts.size() != 2) {
+            Utils::print("[!] 无效的DROP INDEX语法，使用: DROP INDEX table.column\n");
+            return;
+        }
+
+        DBMS::IndexManager idxManager(currentUser, usingDatabase);
+        if (idxManager.dropIndex(parts[0], parts[1])) {
+            Utils::print("[+] 索引删除成功\n");
+        } else {
+            Utils::print("[!] 索引删除失败\n");
+        }
     }else {
         QTextStream cout(stdout);
         Utils::print("[!] Unknown command.\n");
