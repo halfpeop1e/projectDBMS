@@ -19,8 +19,8 @@ QTextBrowser *showinShell = nullptr;
 extern MainWindow *mainWindow;
 namespace Utils {
 QString dbRoot = "/Users/fengzhu/Resource";             // 所有数据库存放路径
-QString userFile = "/Users/fengzhu/Resource"; // 用户信息存储文件
-QString logFile = "/Users/fengzhu/Resource";    // 日志文件
+QString userFile = "/Users/fengzhu/Resource/users.txt"; // 用户信息存储文件
+QString logFile = "/Users/fengzhu/Resource/log.txt";    // 日志文件
 void setOutputShell(QTextBrowser *shell)
 {
     showinShell = shell;
@@ -374,10 +374,12 @@ void createTable(const QString &tableName, const QString &columns)
     }
     //在这判断columns是否满足格式
     QRegularExpression regx(
-        "^\\s*[a-zA-Z_]\\w*\\s+"
-        "(INT|VARCHAR|TEXT|DATE|FLOAT|DOUBLE|BOOLEAN)\\s*"
-        "(,\\s*[a-zA-Z_]\\w*\\s+"
-        "(INT|VARCHAR|TEXT|DATE|FLOAT|DOUBLE|BOOLEAN)\\s*)*$",
+        "\\s*[a-zA-Z_]\\w*\\s+"
+        "(INT|VARCHAR|DATE|FLOAT|DOUBLE|BOOLEAN)"
+        "(?:\\s+[a-zA-Z_0-9]\\w*)*"
+        "(?:\\s*,\\s*[a-zA-Z_]\\w*\\s+"
+        "(INT|VARCHAR|DATE|FLOAT|DOUBLE|BOOLEAN)"
+        "(?:\\s+[a-zA-Z_0-9]\\w*)*)*",
         QRegularExpression::CaseInsensitiveOption
         );
     if(!regx.match(columns).hasMatch()){
@@ -407,15 +409,133 @@ void createTable(const QString &tableName, const QString &columns)
         QStringList pairs = columns.split(",", Qt::SkipEmptyParts);
         QStringList firstColumnNames;
         QStringList secondColumnNames;
+        QStringList allKEY;
+        QStringList defaultValues;
+        int primaryNums=0;
         for (const QString &pair : pairs) {
             QStringList parts = pair.trimmed().split(" ", Qt::SkipEmptyParts);
             if (parts.size() >= 1) {
                 firstColumnNames << parts[0];
                 secondColumnNames << parts[1];
             }
+            if(parts.size()>2){
+                QString keys="";
+                for(int i=2;i<parts.size();i++){
+                    if(parts[i].toUpper()=="PRIMARY"){
+                        if(keys.contains('1')){
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: repeat key defined";
+                            Utils::print("[!] repeat key defined'\n");
+                            return;
+                        }
+                        keys += "1";
+                        primaryNums++;
+                        if(primaryNums>1){
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: Multiple primary key defined";
+                            Utils::print("[!] Multiple primary key defined'\n");
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            return;
+                        }
+                    }
+                    else if(parts[i].toUpper()=="DEFAULT"){
+                        if(keys.contains('4')){
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: repeat key defined";
+                            Utils::print("[!] repeat key defined'\n");
+                            return;
+                        }
+                        keys += "4";
+                        if(i+1>=parts.size()){
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: Error key defined";
+                            Utils::print("[!] Error key defined'\n");
+                            return;
+                        }
+                        defaultValues << parts[++i];
+                    }
+                    else if(parts[i].toUpper()=="NOT"){
+                        if(keys.contains('2')){
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: repeat key defined";
+                            Utils::print("[!] repeat key defined'\n");
+                            return;
+                        }
+                        if(i+1>=parts.size()||parts[i+1].toUpper()!="NULL"){
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: Error key defined";
+                            Utils::print("[!] Error key defined'\n");
+                            return;
+                        }
+                        keys += "2";
+                        i++;
+                    }
+                    else if(parts[i].toUpper()=="UNIQUE"){
+                        if(keys.contains('3')){
+                            file.close();
+                            file2.close();
+                            dropTable(tableName);
+                            QTextStream cout(stdout);
+                            qDebug()<<"error: repeat key defined";
+                            Utils::print("[!] repeat key defined'\n");
+                            return;
+                        }
+                        keys += "3";
+                    }
+                    else{
+                        file.close();
+                        file2.close();
+                        dropTable(tableName);
+                        QTextStream cout(stdout);
+                        qDebug()<<"error: Error key defined";
+                        Utils::print("[!] Error key defined'\n");
+                        return;
+                    }
+                }
+                if(keys.contains('1')&&keys.contains('4')){
+                    file.close();
+                    file2.close();
+                    dropTable(tableName);
+                    QTextStream cout(stdout);
+                    qDebug()<<"[!] Error key conflict: "+parts[0]+"\n";
+                    Utils::print("[!] Error key conflict: "+parts[0]+"\n");
+                    return;
+                }
+                if(keys.contains('1')&&keys.contains('2')){
+                    keys.remove('2');
+                }
+                if(keys.contains('1')&&keys.contains('3')){
+                    keys.remove('3');
+                }
+                allKEY << keys;
+            }
+            else{
+                allKEY << "0";
+            }
         }
         out << firstColumnNames.join(",") << "\n";
         out2 << secondColumnNames.join(",")<< "\n";
+        out2 << allKEY.join(",") << "\n";
+        out2 << defaultValues.join(",") << "\n";
+        file.close();
+        file2.close();
         QTextStream cout(stdout);
         Utils::print("Table '" + tableName + "' created.\n");
         Utils::writeLog("Created table " + tableName);
@@ -464,11 +584,14 @@ void insertInto(const QString &tableName, const QString &values)
     QFile file(path);
     QStringList cols;
     QStringList colsName;
+    QStringList colsKeys;
 
     if (file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file2);
         QString firstline=in.readLine();
+        QString secondline=in.readLine();
         cols = firstline.split(",", Qt::SkipEmptyParts);
+        colsKeys = secondline.split(",", Qt::SkipEmptyParts);
         file2.close();
     }
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -478,6 +601,7 @@ void insertInto(const QString &tableName, const QString &values)
         file.close();
     }
 
+    //类似(typename value,typename value,...)的输入
     if(spaceSeparated.match(values).hasMatch()){
         QStringList pairs=values.split(",", Qt::SkipEmptyParts);
         if(pairs.size()>cols.size()){
@@ -508,6 +632,7 @@ void insertInto(const QString &tableName, const QString &values)
             Utils::writeLog("Inserted into " + tableName);
         }
     }
+    //类似(value,value,...)的输入
     else if(commaSeparated.match(values).hasMatch()){
         QStringList inValues=values.split(",", Qt::SkipEmptyParts);
         if(inValues.size()>cols.size()){
@@ -519,6 +644,7 @@ void insertInto(const QString &tableName, const QString &values)
             QStringList rowData;
             for(int i=0;i<cols.size();i++){
                 if(i>=inValues.size()){
+
                     rowData << Utils::getDefaultValue(cols[i]);
                 }
                 else{
@@ -1182,6 +1308,10 @@ void interpret(const QString &command)
         QString condition = tokens.mid(4).join(' ');
         DBMS::deleteFrom(tableName, condition);
     } else if(op == "ALTER"){
+        if (!Auth::checkPermission(Auth::ADMIN)) {
+            Utils::print("[!]请求无效，需要ADMIN权限.\n");
+            return;
+        }
         DBMS::headerManage(tokens.join(' '));
     }else {
         QTextStream cout(stdout);
