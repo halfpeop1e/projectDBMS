@@ -308,7 +308,8 @@ namespace DBMS {
 void createDatabase(const QString &dbName)
 {
     QString path = Utils::dbRoot + "/" + currentUser + "/" + dbName;
-    if (Utils::ensureDirExists(path)) {
+    QString typepath=Utils::dbRoot + "/" + currentUser + "/" + dbName+"/"+"DATATYPE";
+    if (Utils::ensureDirExists(path)&&Utils::ensureDirExists(typepath)) {
         QTextStream cout(stdout);
         Utils::print("数据库 '" + dbName + "' 已创建.\n");
         Utils::writeLog("Created database " + dbName);
@@ -388,7 +389,7 @@ void createTable(const QString &tableName, const QString &columns)
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
-    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE/"+tableName
                     + "_data" +".txt";
 
     QFile file(path);
@@ -396,7 +397,7 @@ void createTable(const QString &tableName, const QString &columns)
 
     if (file.exists() || file2.exists()) {
         QTextStream cout(stdout);
-        Utils::print("[!] Error: Table '" + tableName + "' already exists.\n");
+        Utils::print("[!] Error: 表 '" + tableName + "' 已经存在.\n");
         return;
     }
 
@@ -431,7 +432,7 @@ void dropTable(const QString &tableName)
     }
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
-    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +tableName
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE/"+tableName
                     + "_data" +".txt";
     QFile file(path);
     QFile file2(path2);
@@ -458,7 +459,7 @@ void insertInto(const QString &tableName, const QString &values)
 
     QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
-    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +tableName
+    QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE/"+tableName
                    + "_data.txt";
     QFile file2(path2);
     QFile file(path);
@@ -795,10 +796,12 @@ void selectAdvanced(const QString &command)
             // 如果是第一次，记录字段标题
             if (header.isEmpty()) {
                 header = result.first().split(",");
+                allResults.append(result.first());
             }
 
             // 确保合并的每个结果都符合统一的字段标题
-            for (const QString &line : result) {
+            for (int j = 1; j < result.size(); ++j) {
+                QString line = result[j];
                 QStringList fields = line.split(",");
                 if (fields.size() == header.size()) {
                     allResults.append(line);
@@ -898,7 +901,7 @@ void headerManage(const QString command){
 
         QString path = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                        + ".txt";
-        QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+        QString path2 = Utils::dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + "DATATYPE/"+tableName
                         +"_data.txt";
         QFile file(path);
         QFile file2(path2);

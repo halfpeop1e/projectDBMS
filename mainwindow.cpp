@@ -8,6 +8,8 @@
 #include <QDir>
 #include <QProgressDialog>
 QString fastlink;
+QString fastfilename;
+QString fastdbname;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -19,6 +21,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->treeView->setModel(model);
     ui->treeView->setRootIndex(model->index(""));
     ui->inputDBname->hide();
+    ui->fastinput->hide();
+    ui->comfirm->hide();
+    ui->cancel->hide();
     QString Welcomemessage=R"(
 ##############################################
           _____  ____  __  __  _____
@@ -68,12 +73,19 @@ void MainWindow::updateDirectoryView(const QString &username)
 void MainWindow::displayFileContent(const QModelIndex &index){
 
         QString filePath = model->filePath(index);
+    if(QFileInfo(filePath).isDir()&& QFileInfo(filePath).fileName()!="DATATYPE"){
+            fastdbname=QFileInfo(filePath).fileName();
+            fastfilename="";
+    }
         if (QFileInfo(filePath).isFile() && filePath.endsWith(".txt")) {
             QFile file(filePath);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 QTextStream in(&file);
                 QStringList rawLines;
-
+                QString fileName = QFileInfo(filePath).fileName();
+                fastfilename=QFileInfo(filePath).completeBaseName();
+                qDebug()<<fastfilename;
+                fastdbname="";
                 while (!in.atEnd()) {
                     rawLines.append(in.readLine());
                 }
@@ -109,8 +121,21 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index)
 
 void MainWindow::on_show_database_clicked()
 {
-    fastlink=Utils::dbRoot+"/"+currentUser;
-    ui->inputDBname->show();
+    if(!ui->inputDBname->isVisible())
+    {
+        fastlink=Utils::dbRoot+"/"+currentUser;
+        ui->inputDBname->show();
+        ui->fastinput->show();
+        ui->comfirm->show();
+        ui->cancel->show();
+    }
+    else{
+        fastlink="";
+        ui->inputDBname->hide();
+        ui->fastinput->hide();
+        ui->comfirm->hide();
+        ui->cancel->hide();
+    }
 }
 
 void MainWindow::on_comfirm_clicked()
@@ -188,5 +213,19 @@ void MainWindow::on_load_clicked()
                                      .arg(filePaths.size())
                                      .arg(destDir));
     }
+}
+
+
+void MainWindow::on_clear_clicked()
+{
+
+    Utils::setOutputShell(ui->shell);
+    if(fastdbname!=""){
+    Interpreter::interpret("DROP DATABASE "+fastdbname);
+    }
+    if(fastfilename!=""){
+        Interpreter::interpret("DROP TABLE "+fastfilename);
+    }
+    ui->fastinput->clear();
 }
 

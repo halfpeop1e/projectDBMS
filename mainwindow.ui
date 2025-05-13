@@ -80,18 +80,18 @@
       <rect>
        <x>110</x>
        <y>40</y>
-       <width>91</width>
+       <width>101</width>
        <height>51</height>
       </rect>
      </property>
      <property name="text">
-      <string>清除</string>
+      <string>快捷删除</string>
      </property>
     </widget>
     <widget class="QPushButton" name="load">
      <property name="geometry">
       <rect>
-       <x>290</x>
+       <x>300</x>
        <y>40</y>
        <width>91</width>
        <height>51</height>
@@ -104,20 +104,20 @@
     <widget class="QPushButton" name="show_database">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>40</y>
-       <width>91</width>
+       <width>101</width>
        <height>51</height>
       </rect>
      </property>
      <property name="text">
-      <string>数据库</string>
+      <string>数据库快捷添加</string>
      </property>
     </widget>
     <widget class="QPushButton" name="selectall">
      <property name="geometry">
       <rect>
-       <x>200</x>
+       <x>210</x>
        <y>40</y>
        <width>91</width>
        <height>51</height>

@@ -38,6 +38,8 @@ private slots:
 
     void on_load_clicked();
 
+    void on_clear_clicked();
+
 private:
     Ui::MainWindow *ui;
     QFileSystemModel *model;
