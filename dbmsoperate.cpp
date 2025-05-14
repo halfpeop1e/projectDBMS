@@ -73,7 +73,94 @@ void useDatabase(const QString &dbName)
 //     }
 // }
 
-
+QStringList readKeysInfor(const QStringList info){
+    QString defaultValues;
+    if(!info.isEmpty()){
+        int primaryNums=0;
+        QString keys="";
+        for(int i=0;i<info.size();i++){
+            if(info[i].toUpper()=="PRIMARY"){
+                if(keys.contains('1')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                keys += "1";
+                primaryNums++;
+                if(primaryNums>1){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: Multiple primary key defined";
+                    Utils::print("[!] Multiple primary key defined'\n");
+                    return {"error",""};
+                }
+            }
+            else if(info[i].toUpper()=="DEFAULT"){
+                if(keys.contains('4')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                keys += "4";
+                if(i+1>=info.size()){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: Error key defined";
+                    Utils::print("[!] Error key defined'\n");
+                    return {"error",""};
+                }
+                defaultValues =info[++i];
+            }
+            else if(info[i].toUpper()=="NOT"){
+                if(keys.contains('2')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                if(i+1>=info.size()||info[i+1].toUpper()!="NULL"){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: Error key defined";
+                    Utils::print("[!] Error key defined'\n");
+                    return {"error",""};
+                }
+                keys += "2";
+                i++;
+            }
+            else if(info[i].toUpper()=="UNIQUE"){
+                if(keys.contains('3')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                   return {"error",""};
+                }
+                keys += "3";
+            }
+            else{
+                QTextStream cout(stdout);
+                qDebug()<<"error: Error key defined";
+                Utils::print("[!] Error key defined'\n");
+                return {"error",""};
+            }
+        }
+        if(keys.contains('1')&&keys.contains('4')){
+            QTextStream cout(stdout);
+            qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
+            Utils::print("[!] Error key conflict: "+info[0]+"\n");
+            return {"error",""};
+        }
+        if(keys.contains('1')&&keys.contains('2')){
+            keys.remove('2');
+        }
+        if(keys.contains('1')&&keys.contains('3')){
+            keys.remove('3');
+        }
+        return {keys,defaultValues};
+    }
+    else{
+        return {"0",""};
+    }
+}
 
 void createTable(const QString &tableName, const QString &columns)
 {
@@ -118,124 +205,28 @@ void createTable(const QString &tableName, const QString &columns)
         QTextStream out(&file);
         QTextStream out2(&file2);
         QStringList pairs = columns.split(",", Qt::SkipEmptyParts);
-        QStringList firstColumnNames;
-        QStringList secondColumnNames;
-        QStringList allKEY;
-        QStringList defaultValues;
-        int primaryNums=0;
+        QStringList firstColumnNames; //列名
+        QStringList secondColumnNames;//列类型
+        QStringList allKEY;//约束值
+        QStringList defaultValues;//默认值
         for (const QString &pair : pairs) {
             QStringList parts = pair.trimmed().split(" ", Qt::SkipEmptyParts);
-            if (parts.size() >= 1) {
+            if (parts.size() >= 2) {
                 firstColumnNames << parts[0];
                 secondColumnNames << parts[1];
             }
-            if(parts.size()>2){
-                QString keys="";
-                for(int i=2;i<parts.size();i++){
-                    if(parts[i].toUpper()=="PRIMARY"){
-                        if(keys.contains('1')){
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
-                            return;
-                        }
-                        keys += "1";
-                        primaryNums++;
-                        if(primaryNums>1){
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: Multiple primary key defined";
-                            Utils::print("[!] Multiple primary key defined'\n");
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            return;
-                        }
-                    }
-                    else if(parts[i].toUpper()=="DEFAULT"){
-                        if(keys.contains('4')){
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
-                            return;
-                        }
-                        keys += "4";
-                        if(i+1>=parts.size()){
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: Error key defined";
-                            Utils::print("[!] Error key defined'\n");
-                            return;
-                        }
-                        defaultValues << parts[++i];
-                    }
-                    else if(parts[i].toUpper()=="NOT"){
-                        if(keys.contains('2')){
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
-                            return;
-                        }
-                        if(i+1>=parts.size()||parts[i+1].toUpper()!="NULL"){
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: Error key defined";
-                            Utils::print("[!] Error key defined'\n");
-                            return;
-                        }
-                        keys += "2";
-                        i++;
-                    }
-                    else if(parts[i].toUpper()=="UNIQUE"){
-                        if(keys.contains('3')){
-                            file.close();
-                            file2.close();
-                            dropTable(tableName);
-                            QTextStream cout(stdout);
-                            qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
-                            return;
-                        }
-                        keys += "3";
-                    }
-                    else{
-                        file.close();
-                        file2.close();
-                        dropTable(tableName);
-                        QTextStream cout(stdout);
-                        qDebug()<<"error: Error key defined";
-                        Utils::print("[!] Error key defined'\n");
-                        return;
-                    }
-                }
-                if(keys.contains('1')&&keys.contains('4')){
+            if(parts.size() > 2){
+                QStringList info = parts.mid(2);
+                QStringList getInfo = readKeysInfor(info);
+                if(getInfo[0]=="error"){
                     file.close();
                     file2.close();
-                    dropTable(tableName);
-                    QTextStream cout(stdout);
-                    qDebug()<<"[!] Error key conflict: "+parts[0]+"\n";
-                    Utils::print("[!] Error key conflict: "+parts[0]+"\n");
                     return;
                 }
-                if(keys.contains('1')&&keys.contains('2')){
-                    keys.remove('2');
+                allKEY << getInfo[0];
+                if(getInfo[1]!=""){
+                    defaultValues << getInfo[1];
                 }
-                if(keys.contains('1')&&keys.contains('3')){
-                    keys.remove('3');
-                }
-                allKEY << keys;
             }
             else{
                 allKEY << "0";
@@ -899,18 +890,43 @@ void headerManage(const QString command){
             qDebug() << "Failed to open file:" << path2 << "Error:" << file2.errorString();
         }
         if (operation.toUpper() == "ADD") {
+            if(extraInfo.isEmpty()){
+                qDebug() << "Error: need more information";
+                Utils::print("[!] Error type need more information\n");
+                return;
+            }
+            QStringList keyInfo=extraInfo.split(" ",Qt::SkipEmptyParts);
 
-            if (extraInfo.toUpper() != "INT" &&
-                extraInfo.toUpper() != "VARCHAR" &&
-                extraInfo.toUpper() != "TEXT" &&
-                extraInfo.toUpper() != "DATE" &&
-                extraInfo.toUpper() != "FLOAT" &&
-                extraInfo.toUpper() != "DOUBLE" &&
-                extraInfo.toUpper() != "BOOLEAN"){
+            if (keyInfo[0].toUpper() != "INT" &&
+                keyInfo[0].toUpper() != "VARCHAR" &&
+                keyInfo[0].toUpper() != "TEXT" &&
+                keyInfo[0].toUpper() != "DATE" &&
+                keyInfo[0].toUpper() != "FLOAT" &&
+                keyInfo[0].toUpper() != "DOUBLE" &&
+                keyInfo[0].toUpper() != "BOOLEAN"){
 
                 Utils::print("[!] Error type\n");
                 return;
             }
+
+            //添加到列定义
+            QTextStream in2(&file2);
+            QString firstLine2 = in2.readLine();
+            QString secondLine2;
+            QString thirdLine2;
+            file2.resize(0);
+            QTextStream out2(&file2);
+            if (firstLine2.isEmpty()) {
+                out2 << keyInfo[0] << "\n";
+            } else {
+                out2 << firstLine2 << "," << keyInfo[0] << "\n";
+                secondLine2 = in2.readLine();
+                if(!in2.atEnd()){
+                    thirdLine2 = in2.readLine();
+                }
+            }
+            file2.close();
+
             //添加到列
             QTextStream in(&file);
             QString firstLine = in.readLine();
@@ -928,21 +944,6 @@ void headerManage(const QString command){
                 out << row << "," << "NULL" << "\n";
             }
             file.close();
-
-            //添加到列定义
-            QTextStream in2(&file2);
-            QString firstLine2 = in2.readLine();
-            QString rest2 = in2.readAll();
-            file2.resize(0);
-
-            QTextStream out2(&file2);
-            if (firstLine2.isEmpty()) {
-                out2 << extraInfo << "\n";
-            } else {
-                out2 << firstLine2 << "," << extraInfo << "\n";
-            }
-            out2 << rest2;
-            file2.close();
         }
         else if (operation.toUpper() == "MODIFY") {
             if (extraInfo.toUpper() != "INT" &&
