@@ -205,6 +205,8 @@ void insertInto(const QString &tableName, const QString &values)
     QStringList colsName;
     QStringList colsKeys;
     QStringList colDefault;
+    int identityNums=0;
+    int identityValue=0;
     QVector<QSet<QString>> columnSets;
 
     if (file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -215,6 +217,11 @@ void insertInto(const QString &tableName, const QString &values)
         cols = firstline.split(",", Qt::SkipEmptyParts);
         colsKeys = secondline.split(",", Qt::SkipEmptyParts);
         colDefault = thirdline.split(",",Qt::SkipEmptyParts);
+        for(auto i:colsKeys){
+            if(i.contains("5")){
+                identityNums++;
+            }
+        }
         file2.close();
     }
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -223,6 +230,7 @@ void insertInto(const QString &tableName, const QString &values)
         colsName = firstline.split(",", Qt::SkipEmptyParts);
         columnSets.resize(colsName.size());
         while (!in.atEnd()){
+            identityValue++;
             QString getLine=in.readLine();
             QStringList contends=getLine.split(",", Qt::SkipEmptyParts);
             for(int col=0;col<contends.size();col++){
@@ -240,7 +248,7 @@ void insertInto(const QString &tableName, const QString &values)
     //类似(typename value,typename value,...)的输入
     if(spaceSeparated.match(values).hasMatch()){
         QStringList pairs=values.split(",", Qt::SkipEmptyParts);
-        if(pairs.size()>cols.size()){
+        if(pairs.size()>cols.size()-identityNums){
             Utils::print("[!] Too many values inserted");
             return;
         }
@@ -253,6 +261,10 @@ void insertInto(const QString &tableName, const QString &values)
                 for (const QString &pair : pairs){
                     QStringList keyValue = pair.trimmed().split(" ", Qt::SkipEmptyParts);
                     if(keyValue[0]==colsName[i]){
+                        if(colsKeys[i].contains("5")){
+                            Utils::print("[!] 自增约束无法插入值"+cols[i].toUpper());
+                            return;
+                        }
                         if(keyValue[1].toUpper()=="NULL"){
                             keyValue[1]="NULL";
                         }
@@ -300,6 +312,9 @@ void insertInto(const QString &tableName, const QString &values)
                     if(colsKeys[i].contains("4")){
                         rowData << colDefault[defaultID++].trimmed();
                     }
+                    else if(colsKeys[i].contains("5")){
+                        rowData << QString::number(identityValue+1).trimmed();
+                    }
                     else{
                         rowData <<"NULL";
                     }
@@ -342,50 +357,55 @@ void insertInto(const QString &tableName, const QString &values)
     //类似(value,value,...)的输入
     else if(commaSeparated.match(values).hasMatch()){
         QStringList inValues=values.split(",", Qt::SkipEmptyParts);
-        if(inValues.size()>cols.size()){
+        if(inValues.size()>cols.size()-identityNums){
             Utils::print("[!] Too many values inserted");
             return;
         }
-        if(inValues.size()<cols.size()){
+        if(inValues.size()<cols.size()-identityNums){
             Utils::print("[!] Too less values inserted");
             return;
         }
         if (file.open(QIODevice::Append | QIODevice::Text)){
             QTextStream out(&file);
             QStringList rowData;
+            int insertNums=0;
             for(int i=0;i<cols.size();i++){
-                if(inValues[i].toUpper()=="NULL"){
-                    inValues[i]="NULL";
+                if(colsKeys[i].contains("5")){
+                    rowData << QString::number(identityValue+1);
+                    continue;
                 }
-                if(inValues[i]!="NULL"&&!Utils::checkColValue(cols[i],inValues[i])){
+                if(inValues[insertNums].toUpper()=="NULL"){
+                    inValues[insertNums]="NULL";
+                }
+                if(inValues[insertNums]!="NULL"&&!Utils::checkColValue(cols[i],inValues[insertNums])){
                     Utils::print("[!] 输入值不符合"+cols[i].toUpper());
                     return;
                 }
                 if(!colsKeys[i].contains("0")){
                     if(colsKeys[i].contains("1")){
-                        if(columnSets[i].find(inValues[i])!=columnSets[i].end()){
+                        if(columnSets[i].find(inValues[insertNums])!=columnSets[i].end()){
                             Utils::print("[!] 主键"+colsName[i]+"不能拥有重复值");
                             return;
                         }
-                        if(inValues[i].toUpper()=="NULL"){
+                        if(inValues[insertNums].toUpper()=="NULL"){
                             Utils::print("[!] 主键"+colsName[i]+"不能为空值");
                             return;
                         }
                     }
                     if(colsKeys[i].contains("2")){
-                        if(inValues[i].toUpper()=="NULL"){
+                        if(inValues[insertNums].toUpper()=="NULL"){
                             Utils::print("[!] "+colsName[i]+"不能为空值");
                             return;
                         }
                     }
                     if(colsKeys[i].contains("3")){
-                        if(columnSets[i].find(inValues[i])!=columnSets[i].end()){
+                        if(columnSets[i].find(inValues[insertNums])!=columnSets[i].end()){
                             Utils::print("[!] "+colsName[i]+":不能拥有重复值");
                             return;
                         }
                     }
                 }
-                rowData << inValues[i].trimmed();
+                rowData << inValues[insertNums++].trimmed();
             }
             out << rowData.join(",")<<"\n";
             file.close();

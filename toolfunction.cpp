@@ -102,6 +102,15 @@ QStringList readKeysInfor(const QStringList info,int& primaryNums){
                 }
                 keys += "3";
             }
+            else if(info[i].toUpper()=="IDENTITY"){
+                if(keys.contains('5')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                keys += "5";
+            }
             else{
                 QTextStream cout(stdout);
                 qDebug()<<"error: Error key defined";
@@ -112,7 +121,13 @@ QStringList readKeysInfor(const QStringList info,int& primaryNums){
         if(keys.contains('1')&&keys.contains('4')){
             QTextStream cout(stdout);
             qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
-            Utils::print("[!] Error key conflict: "+info[0]+"\n");
+            Utils::print("[!] Error key conflict: "+info[0]+"主键和default约束冲突 \n");
+            return {"error",""};
+        }
+        if(keys.contains('4')&&keys.contains('5')){
+            QTextStream cout(stdout);
+            qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
+            Utils::print("[!] Error key conflict: "+info[0]+"主键和自增约束冲突 \n");
             return {"error",""};
         }
         if(keys.contains('1')&&keys.contains('2')){
@@ -120,6 +135,12 @@ QStringList readKeysInfor(const QStringList info,int& primaryNums){
         }
         if(keys.contains('1')&&keys.contains('3')){
             keys.remove('3');
+        }
+        if(keys.contains('5')&&keys.contains('3')){
+            keys.remove('3');
+        }
+        if(keys.contains('5')&&keys.contains('2')){
+            keys.remove('2');
         }
         return {keys,defaultValues};
     }
