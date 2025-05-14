@@ -136,15 +136,15 @@ void createTable(const QString &tableName, const QString &columns)
                 if(getInfo[0]=="error"){
                     file.close();
                     file2.close();
+                    dropTable(tableName);
                     return;
                 }
                 allKEY << getInfo[0];
-                if(getInfo[1]!=""){
-                    defaultValues << getInfo[1];
-                }
+                defaultValues << getInfo[1];
             }
             else{
                 allKEY << "0";
+                defaultValues << "";
             }
         }
         out << firstColumnNames.join(",") << "\n";
