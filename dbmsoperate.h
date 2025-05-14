@@ -13,6 +13,7 @@ void selectAdvanced(const QString &command);
 void selectAdvancedInternal(const QString &query, QStringList &result);
 void deleteFrom(const QString &tableName, const QString &condition);
 void headerManage(const QString command);
+bool updateRecord(const QString& tableName, const QMap<QString, QString>& updates, const QString& whereClause);
 class IndexManager {
 public:
     IndexManager(const QString& user, const QString& db);
