@@ -29,7 +29,7 @@ void writeLog(const QString &entry)
     if (file.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&file);
         QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-        out << "[" << time << "] " << currentUser << ": " << entry << "\n";
+        out<< "[" << time << "] " << currentUser << ": " << entry << "\n";
         file.close();
     }
 }
@@ -147,24 +147,46 @@ QString getDefaultValue(const QString type){
 void showHelp()
 {
     QTextStream cout(stdout);
-    print( "========Commands========\n");
-    print("GRANT username role  (ADMIN only)\n");
-    print("ROLES 展示可赋予的权限\n");
-    print("SHOWME 展示当前用户以及权限\n");
-    print ("REGISTER username password\n");
-    print ("LOGIN username password\n");
-    print ("CREATE DATABASE dbname\n");
-    print ("DROP DATABASE dbname\n");
-    print("USE dbname\n");
-    print("CREATE TABLE tablename (col1 type1,col2 type2,...)\n");
-    print("DROP TABLE tablename\n");
-    print ("INSERT INTO tablename VALUES (val1,val2,...)\n");
-    print("SELECT <fields> FROM <table> [JOIN <table> ON <condition>] [WHERE <condition>] [GROUP BY <field>] [ORDER BY <field>]\n");
-    print("DELETE FROM tablename WHERE col=value\n");
-    print("ALTER TABLE tablename ADD/DROP/MODIFY columnname (type);\n");
-    print("CREATE INDEX BTREE|HASH ON table(column) - 创建索引\n");
-    print("DROP INDEX table.column - 删除索引\n");
-    print("EXIT / QUIT\n\n");
+    Utils::print(R"(
+===== 数据库管理系统帮助文档 =====;
+ "以下是支持的命令格式及其说明：";
+
+ "[用户操作]";
+1."REGISTER <username> <password> -- 注册新用户";
+2."LOGIN <username> <password>   -- 用户登录";
+3."SHOWME      -- 显示当前用户及权限";
+4."ROLES       -- 显示所有可用权限";
+5."GRANT <username> <role>     -- 赋予用户角色（需ADMIN权限";
+
+6."[数据库操作] (需 ADMIN 权限)\n";
+7."CREATE DATABASE <db_name>  -- 创建数据库";
+8."DROP DATABASE <db_name>    -- 删除数据库";
+9."USE <db_name>              -- 使用指定数据库";
+
+ "[数据表操作] (需 ADMIN 权限)'";
+10."CREATE TABLE <table_name> (<col1 TYPE, col2 TYPE, ...>)'";
+          -- 创建数据表，列名和类型用逗号分隔";
+11."DROP TABLE <table_name>      -- 删除数据表";
+12."ALTER TABLE <...>     -- 修改表结构";
+
+ "[数据操作] (需 ADMIN 权限)'";
+13."INSERT INTO <table_name> (<val1, val2, ...>)'";
+ "                    -- 向表中插入一行数据\n";
+14."UPDATE <table_name> SET col1=val1, col2=val2 [WHERE condition]";
+ "                    -- 更新表中记录，可加 WHERE 条件";
+15."DELETE FROM <table_name> WHERE condition";
+ "                    -- 删除满足条件的记录";
+
+ "[查询操作]";
+16."SELECT <columns> FROM <table> [WHERE condition] [ORDER BY ...] [GROUP BY ...] [JOIN ...] [UNION ...]";
+ "                 -- 查询数据，支持多种子句和联合查询\n\n";
+
+ "[索引操作] (需 ADMIN 权限)\n";
+17."CREATE INDEX <BTREE|HASH> ON <table>(<column>)'";
+ "                         -- 为表某列创建 BTREE 或 HASH 索引";
+18."DROP INDEX <table>.<column>      -- 删除某列上的索引";
+
+ "=======================================)");
 }
 
 bool ensureDirExists(const QString &path)

@@ -23,9 +23,8 @@ bool checkPermission(Role requiredRole) {
 
 QString getRoleName(Role role) {
     return ROLE_MAP.key(role, "normal");
-} // namespace User
 }
-// DBMS模块
+}
 
 // 解释器模块
 namespace Interpreter {

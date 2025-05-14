@@ -59,22 +59,6 @@ void useDatabase(const QString &dbName)
     }
 }
 
-// void createTable(const QString& tableName, const QString& columns) {
-//     if (usingDatabase.isEmpty()) {
-//         QTextStream cout(stdout);
-//         Utils::print( "[!] 未选择数据库.\n");
-//         return;
-//     }
-//     QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
-//     QFile file(path);
-//     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-//         QTextStream out(&file);
-//         out << columns << "\n";
-//         QTextStream cout(stdout);
-//        Utils::print ("表 '" + tableName + "' 已创建.\n");
-//         Utils::writeLog("Created table " + tableName);
-//     }
-// }
 
 void createTable(const QString &tableName, const QString &columns)
 {
