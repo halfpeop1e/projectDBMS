@@ -40,10 +40,9 @@ QStringList splitCommand(const QString &command)
     return command.split(regex, Qt::SkipEmptyParts);
 }
 
-QStringList readKeysInfor(const QStringList info){
+QStringList readKeysInfor(const QStringList info,int& primaryNums){
     QString defaultValues;
     if(!info.isEmpty()){
-        int primaryNums=0;
         QString keys="";
         for(int i=0;i<info.size();i++){
             if(info[i].toUpper()=="PRIMARY"){
@@ -128,7 +127,23 @@ QStringList readKeysInfor(const QStringList info){
         return {"0",""};
     }
 }
-
+QString getDefaultValue(const QString type){
+    //INT|VARCHAR|DATE|FLOAT|DOUBLE|BOOLEAN
+    QString colType = type.toUpper();
+    if(colType=="INT"||colType=="BOOLEAN"){
+        return "0";
+    }
+    if(colType=="VARCHAR"){
+        return " ";
+    }
+    if(colType=="DATE"){
+        return "2025-5-14";
+    }
+    if(colType=="FLOAT"||colType=="DOUBLE"){
+        return "0.0";
+    }
+    return " ";
+}
 void showHelp()
 {
     QTextStream cout(stdout);

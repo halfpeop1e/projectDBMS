@@ -122,6 +122,7 @@ void createTable(const QString &tableName, const QString &columns)
         QStringList secondColumnNames;//列类型
         QStringList allKEY;//约束值
         QStringList defaultValues;//默认值
+        int primaryKeyNums=0;
         for (const QString &pair : pairs) {
             QStringList parts = pair.trimmed().split(" ", Qt::SkipEmptyParts);
             if (parts.size() >= 2) {
@@ -130,7 +131,7 @@ void createTable(const QString &tableName, const QString &columns)
             }
             if(parts.size() > 2){
                 QStringList info = parts.mid(2);
-                QStringList getInfo = Utils::readKeysInfor(info);
+                QStringList getInfo = Utils::readKeysInfor(info,primaryKeyNums);
                 if(getInfo[0]=="error"){
                     file.close();
                     file2.close();
@@ -769,7 +770,7 @@ void headerManage(const QString command){
         "ALTER\\s+TABLE\\s+(\\w+)\\s+"
         "(ADD|MODIFY|DROP)\\s+"
         "(\\w+)"
-        "(?:\\s+(\\w+)(?:\\s+(.*))?)?"
+        "(?:\\s+([^\\s]+(?:\\s+[^\\s]+)*))?"
         "(?=\\s*|$)",
         QRegularExpression::CaseInsensitiveOption
         );
@@ -808,8 +809,8 @@ void headerManage(const QString command){
                 Utils::print("[!] Error type need more information\n");
                 return;
             }
-            QStringList keyInfo=extraInfo.split(" ",Qt::SkipEmptyParts);
 
+            QStringList keyInfo=extraInfo.split(" ",Qt::SkipEmptyParts);
             if (keyInfo[0].toUpper() != "INT" &&
                 keyInfo[0].toUpper() != "VARCHAR" &&
                 keyInfo[0].toUpper() != "TEXT" &&
@@ -820,42 +821,95 @@ void headerManage(const QString command){
 
                 Utils::print("[!] Error type\n");
                 return;
-            }
-
+            }  
             //添加到列定义
             QTextStream in2(&file2);
+            QTextStream out2(&file2);
             QString firstLine2 = in2.readLine();
             QString secondLine2;
             QString thirdLine2;
-            file2.resize(0);
-            QTextStream out2(&file2);
+            QString newFile;
+            QStringList consInfo=keyInfo.mid(1);
+            QStringList getInfo;
+            int primaryKey=0;
             if (firstLine2.isEmpty()) {
-                out2 << keyInfo[0] << "\n";
+                getInfo=Utils::readKeysInfor(consInfo,primaryKey);
+                if(getInfo[0]=="error"){
+                    file2.close();
+                    return;
+                }
+                newFile += keyInfo[0]+"\n";
+                newFile += getInfo[0]+"\n";
+                newFile += getInfo[1]+"\n";
             } else {
-                out2 << firstLine2 << "," << keyInfo[0] << "\n";
+                newFile += firstLine2 + "," + keyInfo[0] + "\n";
                 secondLine2 = in2.readLine();
                 if(!in2.atEnd()){
                     thirdLine2 = in2.readLine();
                 }
+                if(secondLine2.contains("1")){
+                    primaryKey=1;
+                }
+                getInfo=Utils::readKeysInfor(consInfo,primaryKey);
+                if(getInfo[0]=="error"){
+                    file2.close();
+                    return;
+                }
+                newFile+=secondLine2+","+getInfo[0]+"\n";
+                if(getInfo[1].isEmpty()){
+                    newFile+=thirdLine2+"\n";
+                }
+                else{
+                    if(thirdLine2.isEmpty()){
+                        newFile+=getInfo[1]+"\n";
+                    }else{
+                        newFile+=thirdLine2+","+getInfo[1] +"\n";
+                    }
+                }
             }
-            file2.close();
+            file2.seek(0);
+            file2.resize(0);
 
             //添加到列
             QTextStream in(&file);
             QString firstLine = in.readLine();
-            QString rest = in.readAll();
+            QString contentLine = in.readAll();
+            file.seek(0);
             file.resize(0);
-
+            QString defaultValue;
+            QString newfile;
             QTextStream out(&file);
+            if(getInfo[1].isEmpty()){
+                if(getInfo[0].contains("2")){
+                    defaultValue=Utils::getDefaultValue(keyInfo[0]);
+                }else{
+                    defaultValue="NULL";
+                }
+            }else{
+                defaultValue=getInfo[1];
+            }
             if (firstLine.isEmpty()) {
-                out << columnName << "\n";
+                newfile += columnName + "\n";
             } else {
-                out << firstLine << "," << columnName << "\n";
+                newfile += firstLine + "," + columnName + "\n";
             }
-            QStringList rows = rest.split("\n", Qt::SkipEmptyParts);
-            for (QString &row : rows) {
-                out << row << "," << "NULL" << "\n";
+            if(!contentLine.isEmpty()){
+                QStringList rows = contentLine.split("\n", Qt::SkipEmptyParts);
+                if(rows.size()>1&&getInfo[0].contains("2")&&getInfo[0].contains("3")){
+                    Utils::print("[!] 无法满足"+columnName+"既是非空又是不重复还存在2条以上的数据"+"\n");
+                    return;
+                }
+                if(rows.size()>1&&getInfo[0].contains("3")&&getInfo[0].contains("4")){
+                    Utils::print("[!] 无法满足"+columnName+"既是非空又是默认赋值还存在2条以上的数据"+"\n");
+                    return;
+                }
+                for (QString &row : rows) {
+                    newfile += row + "," + defaultValue + "\n";
+                }
             }
+            out2 << newFile;
+            file2.close();
+            out << newfile;
             file.close();
         }
         else if (operation.toUpper() == "MODIFY") {
