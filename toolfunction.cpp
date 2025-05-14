@@ -1,5 +1,5 @@
-#include "function.h"
-#include "interprete.h"
+#include "toolfunction.h"
+#include "globals.h"
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
@@ -10,11 +10,7 @@
 #include <QTextBrowser>
 #include <QTextStream>
 #include <QtGlobal>
-#include "mainwindow.h"
 namespace Utils {
-QString dbRoot = "D:/dbmssource";             // 所有数据库存放路径
-QString userFile = "D:/dbmssource/users.txt"; // 用户信息存储文件
-QString logFile = "D:/dbmssource/log.txt";    // 日志文件
 void setOutputShell(QTextBrowser *shell)
 {
     showinShell = shell;

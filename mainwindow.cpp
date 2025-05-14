@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "function.h"
 #include "interprete.h"
 #include "ui_mainwindow.h"
 #include <QFileDialog>
@@ -7,6 +6,8 @@
 #include <QFile>
 #include <QDir>
 #include <QProgressDialog>
+#include "globals.h"
+#include "toolfunction.h"
 QString fastlink;
 QString fastfilename;
 QString fastdbname;
@@ -58,7 +59,7 @@ void MainWindow::on_send_clicked()
 }
 void MainWindow::updateDirectoryView(const QString &username)
 {
-    QString userPath = Utils::dbRoot + "/" + username;
+    QString userPath = dbRoot + "/" + username;
     QDir dir(userPath);
     if (!dir.exists()) {
         qDebug() << "[!] 目录不存在:" << userPath;
@@ -123,7 +124,7 @@ void MainWindow::on_show_database_clicked()
 {
     if(!ui->inputDBname->isVisible())
     {
-        fastlink=Utils::dbRoot+"/"+currentUser;
+        fastlink=dbRoot+"/"+currentUser;
         ui->inputDBname->show();
         ui->fastinput->show();
         ui->comfirm->show();
@@ -174,7 +175,7 @@ void MainWindow::on_load_clicked()
         if(filePaths.isEmpty()) {
             return; // 用户取消了选择
         }
-        QString destDir = Utils::dbRoot+"/"+currentUser+"/"+usingDatabase;
+        QString destDir =dbRoot+"/"+currentUser+"/"+usingDatabase;
         QDir dir(destDir);
         if(!dir.exists()) {
             dir.mkpath(".");

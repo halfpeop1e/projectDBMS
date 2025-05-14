@@ -1,11 +1,10 @@
-#ifndef FUNCTION_H
-#define FUNCTION_H
+#ifndef TOOLFUNCTION_H
+#define TOOLFUNCTION_H
 #include <QString>
 #include <QTextBrowser>
+
 namespace Utils {
-extern QString dbRoot;
-extern QString userFile;
-extern QString logFile;
+
 void writeLog(const QString &entry);
 QStringList splitCommand(const QString &command);
 void showHelp();
@@ -14,5 +13,4 @@ void setOutputShell(QTextBrowser *shell);
 void print(const QString &msg);
 QString formatAsTable(const QStringList &lines);
 } // namespace Utils
-
-#endif // FUNCTION_H
+#endif // TOOLFUNCTION_H

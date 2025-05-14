@@ -17,9 +17,9 @@
    <widget class="QGroupBox" name="showarea">
     <property name="geometry">
      <rect>
-      <x>470</x>
+      <x>440</x>
       <y>210</y>
-      <width>421</width>
+      <width>451</width>
       <height>391</height>
      </rect>
     </property>
@@ -29,9 +29,9 @@
     <widget class="QTextBrowser" name="shell">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>30</y>
-       <width>381</width>
+       <width>431</width>
        <height>321</height>
       </rect>
      </property>
@@ -41,7 +41,7 @@
       <rect>
        <x>20</x>
        <y>350</y>
-       <width>331</width>
+       <width>371</width>
        <height>31</height>
       </rect>
      </property>
@@ -52,7 +52,7 @@
     <widget class="QPushButton" name="send">
      <property name="geometry">
       <rect>
-       <x>350</x>
+       <x>390</x>
        <y>350</y>
        <width>51</width>
        <height>31</height>
@@ -185,7 +185,7 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>441</width>
+      <width>421</width>
       <height>321</height>
      </rect>
     </property>
@@ -195,7 +195,7 @@
      <rect>
       <x>10</x>
       <y>330</y>
-      <width>441</width>
+      <width>421</width>
       <height>261</height>
      </rect>
     </property>
