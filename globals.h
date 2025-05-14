@@ -27,4 +27,5 @@ extern QString dbRoot;
 extern QString userFile;
 extern QString logFile;
 extern MainWindow *mainWindow;
+extern void initializeUserFile();
 #endif // GLOBALS_H

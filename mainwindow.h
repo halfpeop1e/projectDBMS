@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QTextBrowser>
 #include <QTableWidget>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
