@@ -284,7 +284,7 @@ void insertInto(const QString &tableName, const QString &values)
                                 }
                             }
                         }
-                        rowData<<keyValue[1];
+                        rowData<<keyValue[1].trimmed();
                         if(colsKeys[i].contains("4")){
                             defaultID++;
                         }
@@ -298,7 +298,7 @@ void insertInto(const QString &tableName, const QString &values)
                         return;
                     }
                     if(colsKeys[i].contains("4")){
-                        rowData << colDefault[defaultID++];
+                        rowData << colDefault[defaultID++].trimmed();
                     }
                     else{
                         rowData <<"NULL";
@@ -385,7 +385,7 @@ void insertInto(const QString &tableName, const QString &values)
                         }
                     }
                 }
-                rowData << inValues[i];
+                rowData << inValues[i].trimmed();
             }
             out << rowData.join(",")<<"\n";
             file.close();
@@ -1075,6 +1075,10 @@ void headerManage(const QString command){
             QTextStream in2(&file2);
             QString defLine = in2.readLine();
             QStringList definitions = defLine.split(",");
+            if(!Utils::checkColValue(keyInfo[0],columnIndex,path)){
+                Utils::print("[!] Column " + columnName + " 无法修改，表中数据无法转换为修改数据\n");
+                return;
+            }
             QString defLine2 = in2.readLine();
             QStringList definitions2 = defLine2.split(",");
             for(int i=0;i<definitions2.size();i++){

@@ -144,6 +144,9 @@ bool checkColValue(QString type,int index,QString filePath){
     while(!in.atEnd()){
         QString line = in.readLine();
         QStringList cols =line.split(",");
+        if(cols[index].toUpper()=="NULL"){
+            continue;
+        }
         if(type.toUpper()=="INT"){
             bool ok;
             cols[index].toInt(&ok);
