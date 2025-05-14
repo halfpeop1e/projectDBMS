@@ -1042,7 +1042,7 @@ QVector<qint64> IndexManager::queryWithIndex(const QString& tableName, const QSt
         return results;
     }
 
-    indexFile.readLine(); // Skip metadata
+    indexFile.readLine();
     while (!indexFile.atEnd()) {
         QString line = indexFile.readLine();
         QStringList parts = line.split(":");

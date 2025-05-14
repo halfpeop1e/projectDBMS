@@ -29,6 +29,7 @@ public:
     void addColumn();
     void addRow();
     void saveFile();
+    void updateTypeFile(const QString& typeFilePath);
     ~MainWindow();
 
 private slots:
@@ -56,6 +57,8 @@ private slots:
     void on_addrow_clicked();
 
     void on_savetable_clicked();
+
+    void on_addcol_clicked();
 
 private:
     Ui::MainWindow *ui;
