@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>917</width>
-    <height>670</height>
+    <height>679</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -304,7 +304,7 @@
    <widget class="QPushButton" name="addrow">
     <property name="geometry">
      <rect>
-      <x>270</x>
+      <x>90</x>
       <y>570</y>
       <width>81</width>
       <height>32</height>
@@ -325,6 +325,59 @@
     </property>
     <property name="text">
      <string>保存修改</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="typecombo">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>570</y>
+      <width>101</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>INT</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>VARCHAR</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>DATE</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>FLOAT</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>DOUBLE</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>BOOLEAN</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QPushButton" name="addcol">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>570</y>
+      <width>81</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>添加字段</string>
     </property>
    </widget>
   </widget>

@@ -30,6 +30,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableWidget->hide();
     ui->addrow->hide();
     ui->savetable->hide();
+    ui->typecombo->hide();
+    ui->addcol->hide();
     QString Welcomemessage=R"(
 ##############################################
           _____  ____  __  __  _____
@@ -301,10 +303,39 @@ void MainWindow::loadTxtAsTable(const QString& filePath) {
 
     file.close();
 }
+void MainWindow::updateTypeFile(const QString& typeFilePath) {
+    QFile file(typeFilePath);
+    QStringList typeList, defaultList;
+
+    // 如果文件存在则读取
+    if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        if (!in.atEnd()) typeList = in.readLine().split(",", Qt::SkipEmptyParts);
+        if (!in.atEnd()) defaultList = in.readLine().split(",", Qt::SkipEmptyParts);
+        file.close();
+    }
+
+    // 添加新字段类型和默认值
+    QString newType = ui->typecombo->currentText();
+    typeList.append(newType);
+    defaultList.append("0");
+
+    // 重新写入文件
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        QMessageBox::warning(this, "错误", "无法写入字段类型文件");
+        return;
+    }
+    QTextStream out(&file);
+    out << typeList.join(",") << "\n";
+    out << defaultList.join(",") << "\n";
+    file.close();
+}
 void MainWindow::addColumn() {
     int columnCount = ui->tableWidget->columnCount();
     ui->tableWidget->insertColumn(columnCount);  // 在最后一列插入新的一列
-
+    QString currenttype=ui->typecombo->currentText();
+    QString typeFile=dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE"+"/"+fastfilename + "_data.txt";
+    updateTypeFile(typeFile);
     // 如果需要，初始化新列中的每个单元格
     for (int row = 0; row < ui->tableWidget->rowCount(); ++row) {
         QTableWidgetItem *newItem = new QTableWidgetItem("");  // 创建一个空的单元格
@@ -359,7 +390,9 @@ void MainWindow::on_opentable_clicked()
     currentpath=showfile;
     ui->tableWidget->show();
     ui->addrow->show();
+    ui->addcol->show();
     ui->savetable->show();
+    ui->typecombo->show();
     MainWindow::loadTxtAsTable(showfile);
 }
 
@@ -368,7 +401,9 @@ void MainWindow::on_closetable_clicked()
 {
     ui->tableWidget->hide();
     ui->addrow->hide();
+    ui->addcol->hide();
     ui->savetable->hide();
+    ui->typecombo->hide();
 }
 
 
@@ -383,5 +418,16 @@ void MainWindow::on_savetable_clicked()
 {
     saveFile();
     ui->tableWidget->hide();
+    ui->addrow->hide();
+    ui->savetable->hide();
+    ui->typecombo->hide();
+    ui->addcol->hide();
+}
+
+
+void MainWindow::on_addcol_clicked()
+{
+    Utils::print("已添加字段，类型"+ui->typecombo->currentText());
+    addColumn();
 }
 
