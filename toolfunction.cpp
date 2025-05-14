@@ -40,6 +40,95 @@ QStringList splitCommand(const QString &command)
     return command.split(regex, Qt::SkipEmptyParts);
 }
 
+QStringList readKeysInfor(const QStringList info){
+    QString defaultValues;
+    if(!info.isEmpty()){
+        int primaryNums=0;
+        QString keys="";
+        for(int i=0;i<info.size();i++){
+            if(info[i].toUpper()=="PRIMARY"){
+                if(keys.contains('1')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                keys += "1";
+                primaryNums++;
+                if(primaryNums>1){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: Multiple primary key defined";
+                    Utils::print("[!] Multiple primary key defined'\n");
+                    return {"error",""};
+                }
+            }
+            else if(info[i].toUpper()=="DEFAULT"){
+                if(keys.contains('4')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                keys += "4";
+                if(i+1>=info.size()){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: Error key defined";
+                    Utils::print("[!] Error key defined'\n");
+                    return {"error",""};
+                }
+                defaultValues =info[++i];
+            }
+            else if(info[i].toUpper()=="NOT"){
+                if(keys.contains('2')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                if(i+1>=info.size()||info[i+1].toUpper()!="NULL"){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: Error key defined";
+                    Utils::print("[!] Error key defined'\n");
+                    return {"error",""};
+                }
+                keys += "2";
+                i++;
+            }
+            else if(info[i].toUpper()=="UNIQUE"){
+                if(keys.contains('3')){
+                    QTextStream cout(stdout);
+                    qDebug()<<"error: repeat key defined";
+                    Utils::print("[!] repeat key defined'\n");
+                    return {"error",""};
+                }
+                keys += "3";
+            }
+            else{
+                QTextStream cout(stdout);
+                qDebug()<<"error: Error key defined";
+                Utils::print("[!] Error key defined'\n");
+                return {"error",""};
+            }
+        }
+        if(keys.contains('1')&&keys.contains('4')){
+            QTextStream cout(stdout);
+            qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
+            Utils::print("[!] Error key conflict: "+info[0]+"\n");
+            return {"error",""};
+        }
+        if(keys.contains('1')&&keys.contains('2')){
+            keys.remove('2');
+        }
+        if(keys.contains('1')&&keys.contains('3')){
+            keys.remove('3');
+        }
+        return {keys,defaultValues};
+    }
+    else{
+        return {"0",""};
+    }
+}
+
 void showHelp()
 {
     QTextStream cout(stdout);

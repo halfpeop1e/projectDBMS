@@ -7,6 +7,7 @@ namespace Utils {
 
 void writeLog(const QString &entry);
 QStringList splitCommand(const QString &command);
+QStringList readKeysInfor(const QStringList info);
 void showHelp();
 bool ensureDirExists(const QString &path);
 void setOutputShell(QTextBrowser *shell);
