@@ -23,9 +23,8 @@ bool checkPermission(Role requiredRole) {
 
 QString getRoleName(Role role) {
     return ROLE_MAP.key(role, "normal");
-} // namespace User
 }
-// DBMS模块
+}
 
 // 解释器模块
 namespace Interpreter {
@@ -129,7 +128,42 @@ void interpret(const QString &command)
             QString vals = command.mid(start + 1, end - start - 1);
             DBMS::insertInto(tableName, vals);
         }
-    } else if (op == "SELECT") {
+    }else if (op == "UPDATE" && tokens.size() >= 3) {
+        QString tableName = tokens[1];
+        QString setClause = tokens.mid(2).join(" ");
+
+        int whereIndex = setClause.indexOf("WHERE", Qt::CaseInsensitive);
+        QString whereClause = "";
+
+        if (whereIndex != -1) {
+            whereClause = setClause.mid(whereIndex + 5).trimmed();
+            setClause = setClause.left(whereIndex).trimmed();  // 去掉 WHERE 子句
+        }
+
+        // 提取多个 SET 赋值
+        QMap<QString, QString> updates;
+        QRegularExpression assignRe(R"((\w+)\s*=\s*([^,]+))");
+        QRegularExpressionMatchIterator it = assignRe.globalMatch(setClause);
+
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            QString col = match.captured(1).trimmed();
+            QString val = match.captured(2).trimmed();
+            updates[col] = val;
+        }
+
+        if (!updates.isEmpty()) {
+            if (DBMS::updateRecord(tableName, updates, whereClause)) {
+                Utils::print("[+] 更新成功\n");
+            } else {
+                Utils::print("[!] 更新失败\n");
+            }
+        } else {
+            Utils::print("[!] 无效的 UPDATE SET 子句\n");
+        }
+    }
+
+    else if (op == "SELECT") {
         DBMS::selectAdvanced(command);
 
     }else if (op == "DELETE" && tokens.size() >= 5 && tokens[1].toUpper() == "FROM") {

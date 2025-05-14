@@ -30,7 +30,7 @@ public:
     void addColumn();
     void addRow();
     void saveFile();
-    void updateTypeFile(const QString& typeFilePath);
+    void updateTypeFile(const QString& typeFilePath,const QString &newType);
     ~MainWindow();
 
 private slots:

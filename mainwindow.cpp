@@ -303,42 +303,82 @@ void MainWindow::loadTxtAsTable(const QString& filePath) {
 
     file.close();
 }
-void MainWindow::updateTypeFile(const QString& typeFilePath) {
-    QFile file(typeFilePath);
-    QStringList typeList, defaultList;
-
-    // 如果文件存在则读取
-    if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QTextStream in(&file);
-        if (!in.atEnd()) typeList = in.readLine().split(",", Qt::SkipEmptyParts);
-        if (!in.atEnd()) defaultList = in.readLine().split(",", Qt::SkipEmptyParts);
-        file.close();
-    }
-
-    // 添加新字段类型和默认值
-    QString newType = ui->typecombo->currentText();
-    typeList.append(newType);
-    defaultList.append("0");
-
-    // 重新写入文件
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        QMessageBox::warning(this, "错误", "无法写入字段类型文件");
+void MainWindow::updateTypeFile(const QString &typeFile, const QString &newType) {
+    QFile file(typeFile);
+    if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        qWarning() << "无法打开文件:" << typeFile;
         return;
     }
+
+    QTextStream in(&file);
+    QStringList typeLines;
+
+    while (!in.atEnd()) {
+        typeLines.append(in.readLine());
+    }
+
+    // 处理文件内容，假设类型文件有三行（字段类型、字段状态、默认值）
+    if (typeLines.size() < 3) {
+        // 如果文件内容不符合预期格式，先填充默认行
+        typeLines.append("");  // 第一行（字段类型）
+        typeLines.append("");  // 第二行（字段状态）
+        typeLines.append("");  // 第三行（默认值）
+    }
+
+    // 更新字段类型行
+    QStringList types = typeLines[0].split(",");
+    types.append(newType);  // 在最后一列添加新字段类型
+    typeLines[0] = types.join(",");
+
+    // 更新字段状态行（默认为0）
+    QStringList states = typeLines[1].split(",");
+    states.append("0");  // 为新列添加默认状态（0）
+    typeLines[1] = states.join(",");
+
+    // 更新默认值行（默认为空）
+    QStringList defaults = typeLines[2].split(",");
+    defaults.append("");  // 为新列添加默认值（空）
+    typeLines[2] = defaults.join(",");
+
+    // 将更新后的内容写回文件
+    file.resize(0);  // 清空文件内容
     QTextStream out(&file);
-    out << typeList.join(",") << "\n";
-    out << defaultList.join(",") << "\n";
+    for (const QString &line : typeLines) {
+        out << line << "\n";
+    }
+
     file.close();
 }
 void MainWindow::addColumn() {
     int columnCount = ui->tableWidget->columnCount();
     ui->tableWidget->insertColumn(columnCount);  // 在最后一列插入新的一列
-    QString currenttype=ui->typecombo->currentText();
-    QString typeFile=dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE"+"/"+fastfilename + "_data.txt";
-    updateTypeFile(typeFile);
-    // 如果需要，初始化新列中的每个单元格
+
+    // 获取当前选择的字段类型
+    QString currenttype = ui->typecombo->currentText();
+
+    // 构建类型文件路径
+    QString typeFile = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + "DATATYPE" + "/" + fastfilename + "_data.txt";
+
+    // 更新类型文件
+    updateTypeFile(typeFile, currenttype);
+
+    // 初始化新列中的每个单元格
     for (int row = 0; row < ui->tableWidget->rowCount(); ++row) {
-        QTableWidgetItem *newItem = new QTableWidgetItem("");  // 创建一个空的单元格
+        QTableWidgetItem *newItem = nullptr;
+
+        if (row == 0) {
+            // 第一行：字段名，默认为空
+            newItem = new QTableWidgetItem("");
+        }
+        else if (row == 1) {
+            // 第二行：字段状态（默认为 0）
+            newItem = new QTableWidgetItem("0");
+        }
+        else if (row == 2) {
+            // 第三行：默认值，默认为空
+            newItem = new QTableWidgetItem("");
+        }
+
         ui->tableWidget->setItem(row, columnCount, newItem);  // 设置新的单元格到新列
     }
 }
