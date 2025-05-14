@@ -127,6 +127,96 @@ QStringList readKeysInfor(const QStringList info,int& primaryNums){
         return {"0",""};
     }
 }
+bool checkColValue(QString type,int index,QString filePath){
+    if(type.toUpper()!="INT"&&type.toUpper()!="VARCHAR"&&type.toUpper()!="DATE"&&type.toUpper()!="FLOAT"
+        &&type.toUpper()!="DOUBLE"&&type.toUpper()!="BOOLEN"){
+        return false;
+    }
+    QFile file(filePath);
+    if(!file.exists()){
+        return false;
+    }
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+    QTextStream in(&file);
+    in.readLine();
+    while(!in.atEnd()){
+        QString line = in.readLine();
+        QStringList cols =line.split(",");
+        if(type.toUpper()=="INT"){
+            bool ok;
+            cols[index].toInt(&ok);
+            if(!ok){
+                return false;
+            }
+        }
+        else if(type.toUpper()=="DATE"){
+            QRegularExpression regex("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+            if(!regex.match(cols[index]).hasMatch()){
+                return false;
+            }
+        }
+        else if(type.toUpper()=="FLOAT"){
+            bool ok;
+            cols[index].toFloat(&ok);
+            if(!ok){
+                return false;
+            }
+        }
+        else if(type.toUpper()=="DOUBLE"){
+            bool ok;
+            cols[index].toDouble(&ok);
+            if(!ok){
+                return false;
+            }
+        }
+        else if(type.toUpper()=="BOOLEN"){
+            if(cols[index]!="0"&&cols[index]!="1"){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool checkColValue(QString type,QString value){
+    if(type.toUpper()!="INT"&&type.toUpper()!="VARCHAR"&&type.toUpper()!="DATE"&&type.toUpper()!="FLOAT"
+        &&type.toUpper()!="DOUBLE"&&type.toUpper()!="BOOLEN"){
+        return false;
+    }
+    if(type.toUpper()=="INT"){
+        bool ok;
+        value.toInt(&ok);
+        if(!ok){
+            return false;
+        }
+    }
+    else if(type.toUpper()=="DATE"){
+        QRegularExpression regex("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+        if(!regex.match(value).hasMatch()){
+            return false;
+        }
+    }
+    else if(type.toUpper()=="FLOAT"){
+        bool ok;
+        value.toFloat(&ok);
+        if(!ok){
+            return false;
+        }
+    }
+    else if(type.toUpper()=="DOUBLE"){
+        bool ok;
+        value.toDouble(&ok);
+        if(!ok){
+            return false;
+        }
+    }
+    else if(type.toUpper()=="BOOLEN"){
+        if(value!="0"&&value!="1"){
+            return false;
+        }
+    }
+}
 QString getDefaultValue(const QString type){
     //INT|VARCHAR|DATE|FLOAT|DOUBLE|BOOLEAN
     QString colType = type.toUpper();

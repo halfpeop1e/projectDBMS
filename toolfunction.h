@@ -8,6 +8,8 @@ namespace Utils {
 void writeLog(const QString &entry);
 QStringList splitCommand(const QString &command);
 QString getDefaultValue(const QString type);
+bool checkColValue(QString type,int index,QString filePath);
+bool checkColValue(QString type,QString value);
 QStringList readKeysInfor(const QStringList info,int& primaryNums);
 void showHelp();
 bool ensureDirExists(const QString &path);
