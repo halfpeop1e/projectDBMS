@@ -12,6 +12,7 @@
 #include <QTextBrowser>
 #include <QTextStream>
 #include <QtGlobal>
+
 namespace DBMS {
 void createDatabase(const QString &dbName)
 {
@@ -413,17 +414,15 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
     QRegularExpression re(
         R"(SELECT\s+(.*?)\s+FROM\s+(\w+)\s*(?:JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+))?(?:\s+WHERE\s+(.*?))?(?:\s+GROUP\s+BY\s+(.*?))?(?:\s+ORDER\s+BY\s+(.*?))?$)",
         QRegularExpression::CaseInsensitiveOption);
-
     QRegularExpressionMatch match = re.match(query);
-
     if (!match.hasMatch()) {
-        Utils::print("[!] 无效的 SELECT .");
+        Utils::print("[!] 无效的 SELECT 语句.");
         return;
     }
 
-    QString fieldsStr = match.captured(1).trimmed(); // 选中的字段
-    QString table1 = match.captured(2).trimmed();    // 主表
-    QString joinTable = match.captured(3).trimmed(); // 被连接表
+    QString fieldsStr = match.captured(1).trimmed();
+    QString table1 = match.captured(2).trimmed();
+    QString joinTable = match.captured(3).trimmed();
     QString leftTable = match.captured(4).trimmed();
     QString leftField = match.captured(5).trimmed();
     QString rightTable = match.captured(6).trimmed();
@@ -434,16 +433,13 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
 
     QStringList rawLines;
 
+    // ===== 读取表数据或执行 JOIN =====
     if (!joinTable.isEmpty()) {
-        // 加载两张表
-        QString path1 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1
-                        + ".txt";
-        QString path2 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + joinTable
-                        + ".txt";
-        Utils::print(path1 + "\n" + path2);
+        QString path1 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
+        QString path2 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + joinTable + ".txt";
         QFile file1(path1), file2(path2);
         if (!file1.open(QIODevice::ReadOnly | QIODevice::Text) || !file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            Utils::print("[!] 打开用于JOIN的表失败.");
+            Utils::print("[!] 打开用于 JOIN 的表失败.");
             return;
         }
 
@@ -452,29 +448,29 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         QStringList header2 = in2.readLine().split(",");
         QList<QStringList> rows1, rows2;
 
-        while (!in1.atEnd())
-            rows1.append(in1.readLine().split(","));
-        while (!in2.atEnd())
-            rows2.append(in2.readLine().split(","));
+        while (!in1.atEnd()) rows1.append(in1.readLine().split(","));
+        while (!in2.atEnd()) rows2.append(in2.readLine().split(","));
+
         int idx1 = header1.indexOf(leftField);
         int idx2 = header2.indexOf(rightField);
 
-        QStringList joinedHeader = header1 + header2;
+        // 添加前缀防止字段重复
+        QStringList joinedHeader;
+        for (const QString &h : header1) joinedHeader.append(table1 + "." + h);
+        for (const QString &h : header2) joinedHeader.append(joinTable + "." + h);
 
-        rawLines.append(joinedHeader.join(","));  // 表头
-
+        rawLines.append(joinedHeader.join(","));
 
         for (const QStringList &r1 : rows1) {
             for (const QStringList &r2 : rows2) {
-                if (idx1 >= 0 && idx2 >= 0 && r1[idx1] == r2[idx2]) {
+                if (idx1 >= 0 && idx2 >= 0 && r1.value(idx1) == r2.value(idx2)) {
                     QStringList joinedRow = r1 + r2;
-                    rawLines.append(joinedRow.join(","));  //  join 后加入
+                    rawLines.append(joinedRow.join(","));
                 }
             }
         }
     } else {
-        QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1
-                       + ".txt";
+        QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
         QFile file(path);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             Utils::print("[!] 无法打开表文件.");
@@ -489,49 +485,14 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         }
     }
 
-    if (!whereClause.isEmpty()) {
-        QRegularExpression re(R"((\w+)\s*(<=|>=|=|<|>)\s*(.+))");
-        QRegularExpressionMatch match = re.match(whereClause.trimmed());
-
-        if (match.hasMatch() && match.captured(2) == "=") {
-            QString col = match.captured(1).trimmed();
-            QString val = match.captured(3).trimmed().replace("'", "").replace("\"", "");
-
-            DBMS::IndexManager idxManager(currentUser, usingDatabase);
-            if (idxManager.indexExists(table1, col)) {
-                QVector<qint64> locations = idxManager.queryWithIndex(table1, col, val);
-
-                if (!locations.isEmpty()) {
-                    QString tablePath = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
-                    QFile tableFile(tablePath);
-
-                    if (tableFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                        QTextStream in(&tableFile);
-                        QString header = in.readLine();
-                        result.append(header);
-
-                        for (qint64 pos : locations) {
-                            tableFile.seek(pos);
-                            result.append(in.readLine());
-                        }
-
-                        tableFile.close();
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
-    // WHERE 过滤
+    // ===== 使用索引优化 WHERE（仅支持 =） =====
     if (!whereClause.isEmpty()) {
         QStringList filtered;
         QString headerLine = rawLines.takeFirst();
         QStringList header = headerLine.split(",");
-        filtered.append(headerLine);
+        filtered.append(headerLine);  // 保留表头
 
         QString col, val;
-
         QRegularExpression re(R"((\w+)\s*(<=|>=|=|<|>)\s*(.+))");
         QRegularExpressionMatch match = re.match(whereClause.trimmed());
 
@@ -579,7 +540,17 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
                     }
 
                     if (match) {
-                        filtered.append(line);
+                        // 符合 WHERE 条件的行，只保留选中的字段
+                        QStringList selectedFields;
+                        QStringList wantedFields = fieldsStr.split(",");
+                        for (const QString &wanted : wantedFields) {
+                            wanted.trimmed();
+                            int idx = header.indexOf(wanted);
+                            if (idx != -1) {
+                                selectedFields.append(fields.value(idx));
+                            }
+                        }
+                        filtered.append(selectedFields.join(","));
                     }
                 }
             }
@@ -588,40 +559,78 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         rawLines = filtered;
     }
 
-    // GROUP BY（简单实现，仅支持 COUNT 聚合）
-    if (!groupByClause.isEmpty()) {
-        QStringList grouped;
-        QStringList header = rawLines.takeFirst().split(",");
-        int groupIdx = header.indexOf(groupByClause);
-        QMap<QString, int> groupCount;
+    if (fieldsStr.contains("COUNT") || fieldsStr.contains("SUM") || fieldsStr.contains("AVG") || fieldsStr.contains("MIN") || fieldsStr.contains("MAX")) {
+        QRegularExpression aggRe(R"((COUNT|SUM|AVG|MIN|MAX)\s*\((\w+|\*)\))");
+        QRegularExpressionMatch aggMatch = aggRe.match(fieldsStr);
 
-        for (const QString &line : rawLines) {
-            QString key = line.split(",").value(groupIdx);
-            groupCount[key]++;
-        }
+        if (aggMatch.hasMatch()) {
+            QString func = aggMatch.captured(1); // 聚合函数名称
+            QString field = aggMatch.captured(2); // 聚合字段
 
-        grouped.append(groupByClause + ",COUNT");
-        for (auto it = groupCount.begin(); it != groupCount.end(); ++it) {
-            grouped.append(it.key() + "," + QString::number(it.value()));
+            double resultValue = 0;
+            int count = 0;
+            if (field == "*") { // COUNT(*)
+                resultValue = rawLines.size();
+            } else {
+                int fieldIndex = rawLines.first().split(",").indexOf(field);
+                if (fieldIndex == -1) {
+                    Utils::print("[!] 找不到字段: " + field);
+                    return;
+                }
+
+                for (const QString &line : rawLines) {
+                    QStringList fields = line.split(",");
+                    QString fieldValue = fields.at(fieldIndex).trimmed();
+                    bool ok;
+                    double numValue = fieldValue.toDouble(&ok);
+                    if (ok) {
+                        if (func == "SUM") {
+                            resultValue += numValue;
+                        } else if (func == "AVG") {
+                            resultValue += numValue;
+                            count++;
+                        } else if (func == "MIN") {
+                            if (count == 0 || numValue < resultValue) {
+                                resultValue = numValue;
+                            }
+                            count++;
+                        } else if (func == "MAX") {
+                            if (count == 0 || numValue > resultValue) {
+                                resultValue = numValue;
+                            }
+                            count++;
+                        }
+                    }
+                }
+            }
+
+            if (func == "AVG" && count > 0) {
+                resultValue /= count; // 计算平均值
+            }
+
+            result.append(QString::number(resultValue));
+            return;
         }
-        rawLines = grouped;
     }
 
-    // ORDER BY（升序排序）
+    // ===== ORDER BY（升序）=====
     if (!orderByClause.isEmpty()) {
         QString headerLine = rawLines.takeFirst();
         QStringList header = headerLine.split(",");
         int sortIdx = header.indexOf(orderByClause);
-        std::sort(rawLines.begin(), rawLines.end(), [sortIdx](const QString &a, const QString &b) {
-            return a.split(",").value(sortIdx) < b.split(",").value(sortIdx);
-        });
-        rawLines.prepend(headerLine);
+        if (sortIdx == -1) {
+            Utils::print("[!] ORDER BY 字段未找到: " + orderByClause);
+        } else {
+            std::sort(rawLines.begin(), rawLines.end(), [sortIdx](const QString &a, const QString &b) {
+                return a.split(",").value(sortIdx) < b.split(",").value(sortIdx);
+            });
+            rawLines.prepend(headerLine);
+        }
     }
 
-    // 字段选择
+    // ===== 字段选择 =====
     QStringList header = rawLines.first().split(",");
     QList<int> selectedIndexes;
-
     if (fieldsStr == "*") {
         for (int i = 0; i < header.size(); ++i)
             selectedIndexes.append(i);
@@ -629,28 +638,25 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         QStringList wanted = fieldsStr.split(",");
         for (QString col : wanted) {
             col = col.trimmed();
-            if (col.contains(".")) {
-                col = col.section('.', 1); // 去除 student. 或 people. 的前缀
-            }
-            int index = header.indexOf(col);
+            if (col.contains(".")) col = col.section('.', 1); // 去掉前缀
+            int index = header.indexOf(QRegularExpression("(^|\\.)" + QRegularExpression::escape(col) + "$"));
             if (index == -1) {
-                Utils::print("[!] 在标题中未找到字段: " + col);
+                Utils::print("[!] 字段未找到: " + col);
                 continue;
             }
             selectedIndexes.append(index);
         }
     }
-    QStringList formattedResult;
+
     for (const QString &line : rawLines) {
         QStringList fields = line.split(",");
         QStringList out;
         for (int idx : selectedIndexes)
             out.append(fields.value(idx));
-        formattedResult.append(out.join(","));
+        result.append(out.join(","));
     }
-
-    result = formattedResult;
 }
+
 void selectAdvanced(const QString &command)
 {
     if (usingDatabase.isEmpty()) {
