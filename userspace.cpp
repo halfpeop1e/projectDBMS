@@ -70,6 +70,7 @@ bool login(QString &user, QString &username1, QString &password1)
             qDebug() << "登录用户角色:" << roleStr << "映射为:" << role;
 
             Session::setCurrentUser(user, role);
+            mainWindow->on_currentuser_textChanged(currentUser);
             return true;
         }
     }

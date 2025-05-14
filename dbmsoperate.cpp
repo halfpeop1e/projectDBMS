@@ -1,6 +1,7 @@
 #include "dbmsoperate.h"
 #include "globals.h"
 #include"toolfunction.h"
+#include "mainwindow.h"
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
@@ -46,8 +47,9 @@ void useDatabase(const QString &dbName)
     QString path = dbRoot + "/" + currentUser + "/" + dbName;
     if (QDir(path).exists()) {
         usingDatabase = dbName;
+        mainWindow->on_currentusingdb_textChanged(usingDatabase);
         QTextStream cout(stdout);
-        Utils::print("Using database '" + dbName + "'.\n");
+        Utils::print("正在使用'" + dbName + "'.\n");
         Utils::writeLog("Using database " + dbName);
     } else {
         QTextStream cout(stdout);
@@ -96,7 +98,7 @@ void createTable(const QString &tableName, const QString &columns)
     if(!regx.match(columns).hasMatch()){
         QTextStream cout(stdout);
         qDebug()<<"receive: " <<columns;
-        Utils::print("[!] Invalid columns format. Expected format: 'name1 type1,name2 type2,...'\n");
+        Utils::print("[!] 错误的字段格式. 期望格式为: 'name1 type1,name2 type2,...'\n");
         return;
     }
     QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
@@ -139,7 +141,7 @@ void createTable(const QString &tableName, const QString &columns)
                             dropTable(tableName);
                             QTextStream cout(stdout);
                             qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
+                            Utils::print("[!] 重复的键定义'\n");
                             return;
                         }
                         keys += "1";
@@ -147,7 +149,7 @@ void createTable(const QString &tableName, const QString &columns)
                         if(primaryNums>1){
                             QTextStream cout(stdout);
                             qDebug()<<"error: Multiple primary key defined";
-                            Utils::print("[!] Multiple primary key defined'\n");
+                            Utils::print("[!] 多重主键定义'\n");
                             file.close();
                             file2.close();
                             dropTable(tableName);
@@ -161,7 +163,7 @@ void createTable(const QString &tableName, const QString &columns)
                             dropTable(tableName);
                             QTextStream cout(stdout);
                             qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
+                            Utils::print("[!] 重复的键定义'\n");
                             return;
                         }
                         keys += "4";
@@ -171,7 +173,7 @@ void createTable(const QString &tableName, const QString &columns)
                             dropTable(tableName);
                             QTextStream cout(stdout);
                             qDebug()<<"error: Error key defined";
-                            Utils::print("[!] Error key defined'\n");
+                            Utils::print("[!] 错误的键定义'\n");
                             return;
                         }
                         defaultValues << parts[++i];
@@ -183,7 +185,7 @@ void createTable(const QString &tableName, const QString &columns)
                             dropTable(tableName);
                             QTextStream cout(stdout);
                             qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
+                            Utils::print("[!] 重复的键定义'\n");
                             return;
                         }
                         if(i+1>=parts.size()||parts[i+1].toUpper()!="NULL"){
@@ -192,7 +194,7 @@ void createTable(const QString &tableName, const QString &columns)
                             dropTable(tableName);
                             QTextStream cout(stdout);
                             qDebug()<<"error: Error key defined";
-                            Utils::print("[!] Error key defined'\n");
+                            Utils::print("[!] 错误的键定义'\n");
                             return;
                         }
                         keys += "2";
@@ -205,7 +207,7 @@ void createTable(const QString &tableName, const QString &columns)
                             dropTable(tableName);
                             QTextStream cout(stdout);
                             qDebug()<<"error: repeat key defined";
-                            Utils::print("[!] repeat key defined'\n");
+                            Utils::print("[!] 重复的键定义'\n");
                             return;
                         }
                         keys += "3";
@@ -216,7 +218,7 @@ void createTable(const QString &tableName, const QString &columns)
                         dropTable(tableName);
                         QTextStream cout(stdout);
                         qDebug()<<"error: Error key defined";
-                        Utils::print("[!] Error key defined'\n");
+                        Utils::print("[!] 错误的键定义'\n");
                         return;
                     }
                 }
@@ -269,7 +271,7 @@ void dropTable(const QString &tableName)
     if (file.exists()) {
         file.remove();
         QTextStream cout(stdout);
-        Utils::print("Table '" + tableName + "' dropped.\n");
+        Utils::print("表 '" + tableName + "' 已删除.\n");
         Utils::writeLog("Dropped table " + tableName);
     }
     if(file2.exists()){
@@ -281,7 +283,7 @@ void insertInto(const QString &tableName, const QString &values)
 {
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-        Utils::print("[!] No database selected.\n");
+        Utils::print("[!]未选择数据库.\n");
         return;
     }
     QRegularExpression spaceSeparated("^\\s*\\w+\\s+\\w+\\s*(,\\s*\\w+\\s+\\w+\\s*)*$");
@@ -474,12 +476,12 @@ void insertInto(const QString &tableName, const QString &values)
             out << rowData.join(",")<<"\n";
             file.close();
             QTextStream cout(stdout);
-            Utils::print("Inserted into '" + tableName + "'.\n");
+            Utils::print("已插入表 '" + tableName + "'.\n");
             Utils::writeLog("Inserted into " + tableName);
         }
     }
     else{
-        Utils::print("[!] Invalid columns format. Expected format: 'name1 values1,name2 values2,...' or 'values1,values2,...'\n");
+        Utils::print("[!]错误的字段格式. 期望的格式为: 'name1 values1,name2 values2,...' or 'values1,values2,...'\n");
         return;
     }
 }
@@ -857,7 +859,7 @@ void headerManage(const QString command){
 
     if (usingDatabase.isEmpty()) {
         QTextStream cout(stdout);
-        Utils::print("[!] No database selected.\n");
+        Utils::print("[!]未选择数据库.\n");
         return;
     }
 
@@ -887,7 +889,7 @@ void headerManage(const QString command){
 
         if (!file.exists()||!file2.exists()) {
             qDebug() << "Error: Table file does not exist";
-            Utils::print("[!] Table file does not exist\n");
+            Utils::print("[!] 表文件不存在\n");
             return;
         }
 
@@ -999,7 +1001,7 @@ void headerManage(const QString command){
             // 检查是否有数据
             if (fileLines.isEmpty() || file2Lines.isEmpty()) {
                 qDebug() << "Error: Empty table file";
-                Utils::print("[!] Empty table file\n");
+                Utils::print("[!] 表文件为空\n");
                 return;
             }
 
@@ -1007,7 +1009,7 @@ void headerManage(const QString command){
             int columnIndex = columns.indexOf(columnName);
             if (columnIndex == -1) {
                 qDebug() << "Error: Column" << columnName << "not found in table";
-                Utils::print("[!] Column '" + columnName + "' not found in table\n");
+                Utils::print("[!] 字段 '" + columnName + "' 在表中未找到\n");
                 return;
             }
 
@@ -1038,10 +1040,10 @@ void headerManage(const QString command){
             out2 << file2Lines.join("\n");
 
             qDebug() << "Column" << columnName << "dropped successfully";
-            Utils::print("[+] Column '" + columnName + "' dropped successfully\n");
+            Utils::print("[+] 字段 '" + columnName + "' 成功删除\n");
 
         }
-        Utils::print("Alter table: " + tableName + operation + columnName +extraInfo);
+        Utils::print("更改了表: " + tableName + operation + columnName +extraInfo);
         Utils::writeLog("Alter table: " + tableName + operation + columnName +extraInfo);
     }else {
         qDebug() << "Invalid ALTER TABLE syntax";

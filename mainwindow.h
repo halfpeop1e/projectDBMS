@@ -23,6 +23,8 @@ public:
     void updateDirectoryView(const QString &username);
     void welcome();
     void displayFileContent(const QModelIndex &index);
+    void on_currentusingdb_textChanged(const QString &arg1);
+    void on_currentuser_textChanged(const QString &arg1);
     ~MainWindow();
 
 private slots:
@@ -39,6 +41,11 @@ private slots:
     void on_load_clicked();
 
     void on_clear_clicked();
+
+    void on_back_clicked();
+
+    void on_use_database_clicked();
+
 
 private:
     Ui::MainWindow *ui;

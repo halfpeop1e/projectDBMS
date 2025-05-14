@@ -39,9 +39,9 @@
     <widget class="QLineEdit" name="input">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>350</y>
-       <width>371</width>
+       <width>381</width>
        <height>31</height>
       </rect>
      </property>
@@ -79,9 +79,9 @@
      <property name="geometry">
       <rect>
        <x>110</x>
-       <y>40</y>
+       <y>60</y>
        <width>101</width>
-       <height>51</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
@@ -92,9 +92,9 @@
      <property name="geometry">
       <rect>
        <x>300</x>
-       <y>40</y>
+       <y>60</y>
        <width>91</width>
-       <height>51</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
@@ -105,43 +105,43 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>40</y>
+       <y>60</y>
        <width>101</width>
-       <height>51</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
       <string>数据库快捷添加</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="selectall">
+    <widget class="QPushButton" name="use_database">
      <property name="geometry">
       <rect>
        <x>210</x>
-       <y>40</y>
+       <y>60</y>
        <width>91</width>
-       <height>51</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
-      <string>全选</string>
+      <string>使用数据库</string>
      </property>
     </widget>
     <widget class="QLineEdit" name="fastinput">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>130</y>
-       <width>151</width>
-       <height>31</height>
+       <width>161</width>
+       <height>21</height>
       </rect>
      </property>
     </widget>
     <widget class="QPushButton" name="comfirm">
      <property name="geometry">
       <rect>
-       <x>170</x>
-       <y>130</y>
+       <x>70</x>
+       <y>150</y>
        <width>51</width>
        <height>31</height>
       </rect>
@@ -153,8 +153,8 @@
     <widget class="QPushButton" name="cancel">
      <property name="geometry">
       <rect>
-       <x>220</x>
-       <y>130</y>
+       <x>120</x>
+       <y>150</y>
        <width>51</width>
        <height>31</height>
       </rect>
@@ -169,14 +169,79 @@
      </property>
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>110</y>
-       <width>111</width>
-       <height>16</height>
+       <width>121</width>
+       <height>20</height>
       </rect>
      </property>
      <property name="text">
       <string>请输入数据库名！</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="back">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>100</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>返回上页</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="currentusingdb">
+     <property name="geometry">
+      <rect>
+       <x>190</x>
+       <y>40</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="usingdbname">
+     <property name="geometry">
+      <rect>
+       <x>190</x>
+       <y>20</y>
+       <width>61</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>当前数据库</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="currentuser">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>40</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="usingdbname_2">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>20</y>
+       <width>61</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>当前用户</string>
      </property>
     </widget>
    </widget>
