@@ -1,15 +1,10 @@
-#include "mainwindow.h"
-#include "interprete.h"
-#include"globals.h"
+#include "serverwindow.h"
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
-    qputenv("LANG", "zh_CN.UTF-8");
-    qputenv("LC_ALL", "zh_CN.UTF-8");
     QApplication a(argc, argv);
-    initializeUserFile();
-    mainWindow = new MainWindow();
-    mainWindow->show();
+    ServerWindow w;
+    w.show();
     return a.exec();
 }
