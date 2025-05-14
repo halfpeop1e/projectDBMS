@@ -174,8 +174,26 @@ void insertInto(const QString &tableName, const QString &values)
         Utils::print("[!]未选择数据库.\n");
         return;
     }
-    QRegularExpression spaceSeparated("^\\s*\\w+\\s+\\w+\\s*(,\\s*\\w+\\s+\\w+\\s*)*$");
-    QRegularExpression commaSeparated("^\\s*\\w+\\s*(,\\s*\\w+\\s*)*$");
+    QRegularExpression spaceSeparated(
+        "^\\s*"
+        "(\\d+|\\d+\\.\\d+|\\d{4}-\\d{2}-\\d{2}|\\w+)"
+        "\\s+"
+        "(\\d+|\\d+\\.\\d+|\\d{4}-\\d{2}-\\d{2}|\\w+)"
+        "\\s*"
+        "(,\\s*"
+        "(\\d+|\\d+\\.\\d+|\\d{4}-\\d{2}-\\d{2}|\\w+)"
+        "\\s+"
+        "(\\d+|\\d+\\.\\d+|\\d{4}-\\d{2}-\\d{2}|\\w+)"
+        "\\s*)*$"
+        );
+    QRegularExpression commaSeparated(
+        "^\\s*"
+        "(\\d+|(\\d+\\.\\d+)|(\\d{4}-\\d{2}-\\d{2})|\\w+)"
+        "\\s*"
+        "(,\\s*"
+        "(\\d+|(\\d+\\.\\d+)|(\\d{4}-\\d{2}-\\d{2})|\\w+)"
+        "\\s*)*$"
+        );
 
     QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";

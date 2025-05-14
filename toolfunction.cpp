@@ -216,6 +216,7 @@ bool checkColValue(QString type,QString value){
             return false;
         }
     }
+    return true;
 }
 QString getDefaultValue(const QString type){
     //INT|VARCHAR|DATE|FLOAT|DOUBLE|BOOLEAN
