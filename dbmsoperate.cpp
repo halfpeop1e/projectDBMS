@@ -238,6 +238,10 @@ void insertInto(const QString &tableName, const QString &values)
                         if(keyValue[1].toUpper()=="NULL"){
                             keyValue[1]="NULL";
                         }
+                        if(keyValue[1]!="NULL"&&!Utils::checkColValue(cols[i],keyValue[1])){
+                            Utils::print("[!] 输入值不符合"+cols[i].toUpper());
+                            return;
+                        }
                         if(!colsKeys[i].contains("0")){
                             if(colsKeys[i].contains("1")){
                                 if(columnSets[i].find(keyValue[1])!=columnSets[i].end()){
@@ -334,6 +338,10 @@ void insertInto(const QString &tableName, const QString &values)
             for(int i=0;i<cols.size();i++){
                 if(inValues[i].toUpper()=="NULL"){
                     inValues[i]="NULL";
+                }
+                if(inValues[i]!="NULL"&&!Utils::checkColValue(cols[i],inValues[i])){
+                    Utils::print("[!] 输入值不符合"+cols[i].toUpper());
+                    return;
                 }
                 if(!colsKeys[i].contains("0")){
                     if(colsKeys[i].contains("1")){
