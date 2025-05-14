@@ -159,7 +159,7 @@ void showHelp()
     print("CREATE TABLE tablename (col1 type1,col2 type2,...)\n");
     print("DROP TABLE tablename\n");
     print ("INSERT INTO tablename VALUES (val1,val2,...)\n");
-    print("SELECT col1,col2.... FROM tablename WHERE ...\n");
+    print("SELECT <fields> FROM <table> [JOIN <table> ON <condition>] [WHERE <condition>] [GROUP BY <field>] [ORDER BY <field>]\n");
     print("DELETE FROM tablename WHERE col=value\n");
     print("ALTER TABLE tablename ADD/DROP/MODIFY columnname (type);\n");
     print("CREATE INDEX BTREE|HASH ON table(column) - 创建索引\n");
