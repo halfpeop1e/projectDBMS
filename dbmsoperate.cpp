@@ -1016,7 +1016,7 @@ void headerManage(const QString command){
                     return;
                 }
                 if(rows.size()>1&&getInfo[0].contains("3")&&getInfo[0].contains("4")){
-                    Utils::print("[!] 无法满足"+columnName+"既是非空又是默认赋值还存在2条以上的数据"+"\n");
+                    Utils::print("[!] 无法满足"+columnName+"既是不重复又是默认赋值还存在2条以上的数据"+"\n");
                     return;
                 }
                 for (QString &row : rows) {
@@ -1073,15 +1073,8 @@ void headerManage(const QString command){
                 fileLines << in.readLine();
             }
 
-            // 读取file2的所有内容
-            QTextStream in2(&file2);
-            QStringList file2Lines;
-            while (!in2.atEnd()) {
-                file2Lines << in2.readLine();
-            }
-
             // 检查是否有数据
-            if (fileLines.isEmpty() || file2Lines.isEmpty()) {
+            if (fileLines.isEmpty()) {
                 qDebug() << "Error: Empty table file";
                 Utils::print("[!] 表文件为空\n");
                 return;
@@ -1102,14 +1095,19 @@ void headerManage(const QString command){
                 fileLines[i] = fields.join(",");
             }
 
-            // 处理file2的所有行
-            QStringList fields = file2Lines[0].split(",", Qt::SkipEmptyParts);
-            fields.removeAt(columnIndex);
-            file2Lines[0] = fields.join(",");
-            for(int i=columnIndex+1;i<file2Lines.size()-1;i++){
-                file2Lines[i]=file2Lines[i+1];
+            // 读取file2的所有内容
+            QTextStream in2(&file2);
+            QStringList file2Lines;
+            while (!in2.atEnd()) {
+                file2Lines << in2.readLine();
             }
-            file2Lines.resize(file2Lines.size()-1);
+
+            // 处理file2的所有行
+            for (int i = 0; i < file2Lines.size(); ++i) {
+                QStringList fields = file2Lines[i].split(",", Qt::SkipEmptyParts);
+                fields.removeAt(columnIndex);
+                file2Lines[i] = fields.join(",");
+            }
 
             file.resize(0);
             file.seek(0);
