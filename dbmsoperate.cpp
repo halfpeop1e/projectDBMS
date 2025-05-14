@@ -808,7 +808,7 @@ void headerManage(const QString command){
         }
         if (!file2.open(QIODevice::ReadWrite | QIODevice::Text)) {
             qDebug() << "Failed to open file:" << path2 << "Error:" << file2.errorString();
-        }
+        }                                                              //添加
         if (operation.toUpper() == "ADD") {
             if(extraInfo.isEmpty()){
                 qDebug() << "Error: need more information";
@@ -917,26 +917,33 @@ void headerManage(const QString command){
             file2.close();
             out << newfile;
             file.close();
-        }
+        }                                                            //修改
         else if (operation.toUpper() == "MODIFY") {
-            if (extraInfo.toUpper() != "INT" &&
-                extraInfo.toUpper() != "VARCHAR" &&
-                extraInfo.toUpper() != "TEXT" &&
-                extraInfo.toUpper() != "DATE" &&
-                extraInfo.toUpper() != "FLOAT" &&
-                extraInfo.toUpper() != "DOUBLE" &&
-                extraInfo.toUpper() != "BOOLEAN"){
+            if(extraInfo.isEmpty()){
+                qDebug() << "Error: need more information";
+                Utils::print("[!] Error type need more information\n");
+                return;
+            }
+            QStringList keyInfo=extraInfo.split(" ",Qt::SkipEmptyParts);
+            if (keyInfo[0].toUpper() != "INT" &&
+                keyInfo[0].toUpper() != "VARCHAR" &&
+                keyInfo[0].toUpper() != "TEXT" &&
+                keyInfo[0].toUpper() != "DATE" &&
+                keyInfo[0].toUpper() != "FLOAT" &&
+                keyInfo[0].toUpper() != "DOUBLE" &&
+                keyInfo[0].toUpper() != "BOOLEAN"){
 
                 Utils::print("[!] Error type\n");
                 return;
             }
+
+            QStringList consInfo=keyInfo.mid(1);
+            QStringList getInfo;
+            int priNum=0;
+
             QTextStream in(&file);
             QString columnLine = in.readLine();
             QStringList columns = columnLine.split(",", Qt::SkipEmptyParts);
-
-            QTextStream in2(&file2);
-            QString defLine = in2.readLine();
-            QStringList definitions = defLine.split(",", Qt::SkipEmptyParts);
 
             int columnIndex = columns.indexOf(columnName);
             if (columnIndex == -1) {
@@ -944,17 +951,44 @@ void headerManage(const QString command){
                 Utils::print("[!] Column '" + columnName + "' not found in table\n");
                 return;
             }
+
+            QTextStream in2(&file2);
+            QString defLine = in2.readLine();
+            QStringList definitions = defLine.split(",");
+            QString defLine2 = in2.readLine();
+            QStringList definitions2 = defLine2.split(",");
+            for(int i=0;i<definitions2.size();i++){
+                if(i==columnIndex){
+                    continue;
+                }
+                if(definitions2[i].contains("1")){
+                    priNum=1;
+                    break;
+                }
+            }
+            QString defLine3 = in2.readLine();
+            QStringList definitions3 = defLine3.split(",");
+
+            getInfo=Utils::readKeysInfor(consInfo,priNum);
+            if(getInfo[0]=="error"){
+                file.close();
+                file2.close();
+                return;
+            }
             // 修改对应位置的列定义
-            definitions[columnIndex] = extraInfo;
-            QString rest = in2.readAll();
+            definitions[columnIndex] = keyInfo[0];
+            definitions2[columnIndex] = getInfo[0];
+            definitions3[columnIndex] = getInfo[1];
+
             file2.resize(0);
             file2.seek(0);
             QTextStream out2(&file2);
             out2 << definitions.join(",") << "\n";
-            out2 << rest;
+            out2 << definitions2.join(",") << "\n";
+            out2 << definitions3.join(",") << "\n";
             file.close();
             file2.close();
-        }
+        }                                                          //删除
         else if (operation.toUpper() == "DROP") {
             // 读取file的所有内容
             QTextStream in(&file);
