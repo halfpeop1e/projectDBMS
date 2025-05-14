@@ -244,6 +244,32 @@
       <string>当前用户</string>
      </property>
     </widget>
+    <widget class="QPushButton" name="opentable">
+     <property name="geometry">
+      <rect>
+       <x>290</x>
+       <y>100</y>
+       <width>51</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>打开表</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="closetable">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>100</y>
+       <width>51</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>关闭表</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QTreeView" name="treeView">
     <property name="geometry">
@@ -261,8 +287,44 @@
       <x>10</x>
       <y>330</y>
       <width>421</width>
-      <height>261</height>
+      <height>241</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QTableWidget" name="tableWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>330</y>
+      <width>421</width>
+      <height>241</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="addrow">
+    <property name="geometry">
+     <rect>
+      <x>270</x>
+      <y>570</y>
+      <width>81</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>添加行</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="savetable">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>570</y>
+      <width>81</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>保存修改</string>
     </property>
    </widget>
   </widget>

@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QDir>
 #include <QProgressDialog>
+#include <QToolBar>
+#include <QTableWidget>
 #include "globals.h"
 #include "toolfunction.h"
 QString fastlink;
@@ -25,6 +27,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->fastinput->hide();
     ui->comfirm->hide();
     ui->cancel->hide();
+    ui->tableWidget->hide();
+    ui->addrow->hide();
+    ui->savetable->hide();
     QString Welcomemessage=R"(
 ##############################################
           _____  ____  __  __  _____
@@ -255,13 +260,128 @@ void MainWindow::on_use_database_clicked()
 void MainWindow::on_currentusingdb_textChanged(const QString &arg1)
 {
     QString nowusingdb=arg1;
-    ui->currentusingdb->setText(arg1);
+    ui->currentusingdb->setText(nowusingdb);
 }
 
 
 void MainWindow::on_currentuser_textChanged(const QString &arg1)
 {
     QString nowuser=arg1;
-    ui->currentuser->setText(arg1);
+    ui->currentuser->setText(nowuser);
+}
+
+void MainWindow::loadTxtAsTable(const QString& filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Cannot open file");
+        return;
+    }
+
+    QTextStream in(&file);
+    QStringList lines;
+    while (!in.atEnd())
+        lines << in.readLine();
+
+    int rowCount = lines.size();
+    if (rowCount == 0) return;
+
+    QStringList firstRow = lines[0].split(",", Qt::SkipEmptyParts);
+    int columnCount = firstRow.size();
+
+    ui->tableWidget->setRowCount(rowCount);
+    ui->tableWidget->setColumnCount(columnCount);
+
+    for (int i = 0; i < rowCount; ++i) {
+        QStringList values = lines[i].split(",", Qt::SkipEmptyParts);
+        for (int j = 0; j < values.size(); ++j) {
+            QTableWidgetItem* item = new QTableWidgetItem(values[j].trimmed());
+            ui->tableWidget->setItem(i, j, item);
+        }
+    }
+
+    file.close();
+}
+void MainWindow::addColumn() {
+    int columnCount = ui->tableWidget->columnCount();
+    ui->tableWidget->insertColumn(columnCount);  // 在最后一列插入新的一列
+
+    // 如果需要，初始化新列中的每个单元格
+    for (int row = 0; row < ui->tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *newItem = new QTableWidgetItem("");  // 创建一个空的单元格
+        ui->tableWidget->setItem(row, columnCount, newItem);  // 设置新的单元格到新列
+    }
+}
+void MainWindow::addRow() {
+    int rowCount = ui->tableWidget->rowCount();
+    ui->tableWidget->insertRow(rowCount);  // 在最后一行插入新的一行
+
+    // 如果需要，初始化新行中的每个单元格
+    for (int col = 0; col < ui->tableWidget->columnCount(); ++col) {
+        QTableWidgetItem *newItem = new QTableWidgetItem("");  // 创建一个空的单元格
+        ui->tableWidget->setItem(rowCount, col, newItem);  // 设置新的单元格到新行
+    }
+}
+void MainWindow::saveFile() {
+    if (currentpath.isEmpty()) {
+        QMessageBox::warning(this, "Error", "No file loaded.");
+        return;
+    }
+
+    QFile file(currentpath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Cannot open file for writing.");
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // 遍历所有行和列，将每个单元格的数据写入文件
+    for (int row = 0; row < ui->tableWidget->rowCount(); ++row) {
+        QStringList rowData;
+        for (int col = 0; col < ui->tableWidget->columnCount(); ++col) {
+            QTableWidgetItem* item = ui->tableWidget->item(row, col);
+            if (item) {
+                rowData << item->text(); // 获取单元格文本
+            } else {
+                rowData << ""; // 如果没有数据，填充空字符串
+            }
+        }
+        out << rowData.join(",") << "\n"; // 使用逗号分隔每个单元格，换行结束
+    }
+
+    file.close();
+    QMessageBox::information(this, "Success", "File saved successfully.");
+}
+
+void MainWindow::on_opentable_clicked()
+{
+    QString showfile= dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + fastfilename + ".txt";
+    currentpath=showfile;
+    ui->tableWidget->show();
+    ui->addrow->show();
+    ui->savetable->show();
+    MainWindow::loadTxtAsTable(showfile);
+}
+
+
+void MainWindow::on_closetable_clicked()
+{
+    ui->tableWidget->hide();
+    ui->addrow->hide();
+    ui->savetable->hide();
+}
+
+
+void MainWindow::on_addrow_clicked()
+{
+    addRow();
+}
+
+
+
+void MainWindow::on_savetable_clicked()
+{
+    saveFile();
+    ui->tableWidget->hide();
 }
 
