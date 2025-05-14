@@ -230,3 +230,38 @@ void MainWindow::on_clear_clicked()
     ui->fastinput->clear();
 }
 
+
+void MainWindow::on_back_clicked()
+{
+    QString backlink=currentUser;
+    MainWindow::updateDirectoryView(backlink);
+}
+
+
+void MainWindow::on_use_database_clicked()
+{
+    if(fastdbname!="")
+    {
+        Utils::setOutputShell(ui->shell);
+        Interpreter::interpret("USE "+fastdbname);
+    }
+    else{
+        Utils::print("请选择数据库");
+    }
+
+}
+
+
+void MainWindow::on_currentusingdb_textChanged(const QString &arg1)
+{
+    QString nowusingdb=arg1;
+    ui->currentusingdb->setText(arg1);
+}
+
+
+void MainWindow::on_currentuser_textChanged(const QString &arg1)
+{
+    QString nowuser=arg1;
+    ui->currentuser->setText(arg1);
+}
+
