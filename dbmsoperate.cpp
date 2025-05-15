@@ -903,6 +903,7 @@ void deleteFrom(const QString &tableName, const QString &condition)
     QTextStream cout(stdout);
     Utils::print("于" + tableName +  "删除了对应的项 ''.\n");
     Utils::writeLog("Deleted from " + tableName + " where " + condition);
+    Utils::checkIdentity(tableName);
 }
 void headerManage(const QString command){
 
@@ -1080,10 +1081,14 @@ void headerManage(const QString command){
             QString defaultValue;
             QString newfile;
             QTextStream out(&file);
+            int identityValue=1;
             if(getInfo[1].isEmpty()){
                 if(getInfo[0].contains("2")){
                     defaultValue=Utils::getDefaultValue(keyInfo[0]);
-                }else{
+                }else if(getInfo[0].contains("5")){
+                    defaultValue="IDENTITY";
+                }
+                else{
                     defaultValue="NULL";
                 }
             }else{
@@ -1104,8 +1109,17 @@ void headerManage(const QString command){
                     Utils::print("[!] 无法满足"+columnName+"既是不重复又是默认赋值还存在2条以上的数据"+"\n");
                     return;
                 }
+                if(rows.size()>1&&getInfo[0].contains("1")){
+                    Utils::print("[!] 无法满足"+columnName+"是主键还存在2条以上的数据"+"\n");
+                    return;
+                }
                 for (QString &row : rows) {
-                    newfile += row + "," + defaultValue + "\n";
+                    if(defaultValue=="IDENTITY"){
+                        newfile += row + "," + QString::number(identityValue++) + "\n";
+                    }
+                    else{
+                        newfile += row + "," + defaultValue + "\n";
+                    }
                 }
             }
             out2 << newFile;
