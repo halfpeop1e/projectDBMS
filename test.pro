@@ -10,6 +10,7 @@ QMAKE_LFLAGS += -finput-charset=UTF-8
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    dbmaintenance.cpp \
     dbmsoperate.cpp \
     globals.cpp \
     interprete.cpp \
@@ -20,6 +21,7 @@ SOURCES += \
     userspace.cpp
 
 HEADERS += \
+    dbmaintenance.h \
     dbmsoperate.h \
     globals.h \
     interprete.h \

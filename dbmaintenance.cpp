@@ -152,33 +152,38 @@ bool DBMaintenance::backupDatabase(const QString &dbName, const QString &backupP
 }
 bool DBMaintenance::restoreDatabase(const QString &dbName, const QString &backupPath, QWidget *parent)
 {
-    QString dbBackupPath = backupPath + "/" + dbName;
+    QString dbBackupPath = backupPath+"/"+dbName;
     if (!QDir(dbBackupPath).exists()) {
-        QMessageBox::critical(parent, tr("错误"), tr("备份中找不到数据库: %1").arg(dbName));
+        QMessageBox::critical(parent, tr("错误"), tr("备份目录不存在: %1").arg(dbBackupPath));
         return false;
     }
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(parent, tr("确认"),
-                                  tr("这将覆盖数据库 %1 的所有现有数据。确定要继续吗?").arg(dbName),
-                                  QMessageBox::Yes|QMessageBox::No);
+
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        parent, tr("确认"),
+        tr("这将覆盖数据库 %1 的所有现有数据。确定要继续吗?").arg(dbName),
+        QMessageBox::Yes | QMessageBox::No);
     if (reply != QMessageBox::Yes) {
         return false;
     }
 
-    QString dbPath = dbRoot + "/" + currentUser + "/" + dbName;
+    QString dbPath = dbRoot + "/" + currentUser+"/"+dbName ;
     QString tempBackup = QDir::tempPath() + "/" + dbName + "_temp_backup_" +
                          QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-    if (QDir(dbPath).exists() && !backupDatabase(dbName, tempBackup, parent)) {
-        QMessageBox::critical(parent, tr("错误"), tr("无法创建临时备份"));
-        return false;
-    }
+
+    // 备份当前数据库，方便恢复
+
     try {
-        if (QDir(dbPath).exists() && !removeDir(dbPath)) {
-            throw tr("无法清除现有数据库目录");
+        // 确保目标目录存在，如果不存在则创建
+        if (!QDir(dbPath).exists()) {
+            if (!QDir().mkpath(dbPath)) {
+                throw tr("无法创建数据库目录");
+            }
         }
+        // 复制备份文件覆盖到目标目录
         if (!copyDir(dbBackupPath, dbPath)) {
             throw tr("还原数据库文件时出错");
         }
+        // 删除临时备份
         if (QDir(tempBackup).exists()) {
             removeDir(tempBackup);
         }
@@ -186,6 +191,7 @@ bool DBMaintenance::restoreDatabase(const QString &dbName, const QString &backup
     } catch (const QString &error) {
         QMessageBox::critical(parent, tr("错误"), error);
 
+        // 出错恢复临时备份
         if (QDir(tempBackup).exists() && !restoreDatabase(dbName, tempBackup, parent)) {
             QMessageBox::critical(parent, tr("严重错误"),
                                   tr("还原失败且无法恢复原数据库！"));
@@ -196,6 +202,8 @@ bool DBMaintenance::restoreDatabase(const QString &dbName, const QString &backup
         return false;
     }
 }
+
+
 QString DBMaintenance::getBackupInfo(const QString &backupPath)
 {
     QFile metaFile(backupPath + "/backup_meta.json");
@@ -253,28 +261,60 @@ bool DBMaintenance::copyDir(const QString &src, const QString &dest, bool overwr
 }
 bool DBMaintenance::removeDir(const QString &dirName)
 {
-    bool result = true;
     QDir dir(dirName);
-
-    if (dir.exists()) {
-        QDirIterator it(dirName, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            QFileInfo info = it.fileInfo();
-            if (info.isDir() && info.fileName() != "." && info.fileName() != "..") {
-                result = QDir().rmdir(info.absoluteFilePath());
-            } else if (info.isFile()) {
-                result = QFile::remove(info.absoluteFilePath());
-            }
-            if (!result) {
-                return false;
-            }
-        }
-        result = dir.rmdir(dirName);
+    if (!dir.exists()) {
+        qDebug() << "[removeDir] 目录不存在:" << dirName;
+        return true; // 目录不存在也算成功
     }
 
-    return result;
+    bool allOk = true;
+
+    // 递归遍历目录所有文件和子目录
+    QDirIterator it(dirName,
+                    QDir::NoDotAndDotDot | QDir::Files | QDir::Dirs | QDir::Hidden | QDir::System,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        QFileInfo info = it.fileInfo();
+
+        if (info.isFile()) {
+            QFile file(info.absoluteFilePath());
+
+            // 如果文件只读，先加写权限
+            if (!(file.permissions() & QFile::WriteOwner)) {
+                file.setPermissions(file.permissions() | QFile::WriteOwner);
+            }
+
+            if (!file.remove()) {
+                qDebug() << "[removeDir] 删除文件失败:" << info.absoluteFilePath();
+                allOk = false;
+            }
+        } else if (info.isDir()) {
+            // 递归删除子目录
+            bool subDirOk = removeDir(info.absoluteFilePath());
+            if (!subDirOk) {
+                qDebug() << "[removeDir] 删除子目录失败:" << info.absoluteFilePath();
+                allOk = false;
+            }
+            QDir subDir(info.absoluteFilePath());
+            if (!subDir.rmdir(info.absoluteFilePath())) {
+                qDebug() << "[removeDir] 删除空目录失败:" << info.absoluteFilePath();
+                allOk = false;
+            }
+        }
+    }
+
+    // 最后删除传入的根目录本身
+    if (!dir.rmdir(dirName)) {
+        qDebug() << "[removeDir] 删除目录失败:" << dirName;
+        allOk = false;
+    }
+
+    return allOk;
 }
+
+
+
 bool DBMaintenance::validateBackup(const QString &backupPath)
 {
     QFile metaFile(backupPath + "/backup_meta.json");

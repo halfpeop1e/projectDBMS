@@ -9,6 +9,7 @@
 #include <QTextBrowser>
 #include <QTextStream>
 #include <QtGlobal>
+#include "dbmaintenance.h"
 #include "mainwindow.h"
 #include "globals.h"
 #include"toolfunction.h"
@@ -180,7 +181,60 @@ void interpret(const QString &command)
             return;
         }
         DBMS::headerManage(tokens.join(' '));
-    }else if (op == "CREATE" && tokens.size() >= 4 && tokens[1].toUpper() == "INDEX") {
+    }else if (op == "BACKUP") {
+        if (tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+            QString dbName = tokens[2];
+            QString backupPath = tokens.size() >= 4 ? tokens[3] : "";
+            if (backupPath.isEmpty()) {
+                Utils::print("语法错误：BACKUP DATABASE dbname 路径");
+                return;
+            }
+            DBMaintenance maintainer;
+            if (maintainer.backupDatabase(dbName, backupPath, mainWindow)) {
+                Utils::print(QString("数据库 %1 成功备份到 %2").arg(dbName, backupPath));
+            } else {
+                Utils::print(QString("数据库 %1 备份失败").arg(dbName));
+            }
+        } else if (tokens.size() >= 3 && tokens[1].toUpper() == "SYSTEM") {
+            QString backupPath = tokens[2];
+            DBMaintenance maintainer;
+            if (maintainer.backupSystem(backupPath, mainWindow)) {
+                Utils::print(QString("系统成功备份到 %1").arg(backupPath));
+            } else {
+                Utils::print("系统备份失败");
+            }
+        } else {
+            Utils::print("语法错误：BACKUP DATABASE dbname 路径 或 BACKUP SYSTEM 路径");
+        }
+    }
+    else if (op == "RESTORE") {
+        if (tokens.size() >= 3 && tokens[1].toUpper() == "DATABASE") {
+            QString dbName = tokens[2];
+            QString backupPath = tokens.size() >= 4 ? tokens[3] : "";
+            if (backupPath.isEmpty()) {
+                Utils::print("语法错误：RESTORE DATABASE dbname 路径");
+                return;
+            }
+            DBMaintenance maintainer;
+            if (maintainer.restoreDatabase(dbName, backupPath, mainWindow)) {
+                Utils::print(QString("数据库 %1 成功从 %2 还原").arg(dbName, backupPath));
+            } else {
+                Utils::print(QString("数据库 %1 还原失败").arg(dbName));
+            }
+        } else if (tokens.size() >= 3 && tokens[1].toUpper() == "SYSTEM") {
+            QString backupPath = tokens[2];
+            DBMaintenance maintainer;
+            if (maintainer.restoreSystem(backupPath, mainWindow)) {
+                Utils::print(QString("系统成功从 %1 还原").arg(backupPath));
+            } else {
+                Utils::print("系统还原失败");
+            }
+        } else {
+            Utils::print("语法错误：RESTORE DATABASE dbname 路径 或 RESTORE SYSTEM 路径");
+        }
+    }
+
+    else if (op == "CREATE" && tokens.size() >= 4 && tokens[1].toUpper() == "INDEX") {
         if (!Auth::checkPermission(Auth::ADMIN)) {
             Utils::print("[!] 需要ADMIN权限.\n");
             return;

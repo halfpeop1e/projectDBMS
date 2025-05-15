@@ -436,7 +436,6 @@ void MainWindow::on_opentable_clicked()
 {
     QString showfile= dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + fastfilename + ".txt";
     currentpath=showfile;
-     ui->contentdisplay->hide();
     ui->tableWidget->show();
     ui->addrow->show();
     ui->addcol->show();
