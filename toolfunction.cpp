@@ -259,6 +259,72 @@ QString getDefaultValue(const QString type){
     }
     return " ";
 }
+bool checkDeletePK(QString tablename,int index,QString value){
+    QString fkpath = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + "DATATYPE/"
+                                                                              "fk_data.txt";
+    QFile fkFile(fkpath);
+    if(fkFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+        QTextStream in(&fkFile);
+        while (!in.atEnd()) {
+            QString line=in.readLine();
+            QStringList list =line.split(",");
+            if(list[3]==tablename&&list[4]==QString::number(index)){
+                QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + list[1]
+                               + ".txt";
+                QFile file(path);
+                QSet<QString> records;
+                if(file.open(QIODevice::ReadOnly | QIODevice::Text)){
+                    QTextStream in2(&file);
+                    while(!in2.atEnd()){
+                        QString line2=in2.readLine();
+                        QStringList list2 =line2.split(",");
+                        records.insert(list2[list[2].toInt()]);
+                    }
+                    file.close();
+                    if(records.contains(value)){
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        }
+        fkFile.close();
+    }
+    return false;
+}
+bool checkInsertPK(QString tablename,int index,QString value){
+    QString fkpath = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + "DATATYPE/"
+                                                                          "fk_data.txt";
+    QFile fkFile(fkpath);
+    if(fkFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+        QTextStream in(&fkFile);
+        while (!in.atEnd()) {
+            QString line=in.readLine();
+            QStringList list =line.split(",");
+            if(list[1]==tablename&&list[2]==QString::number(index)){
+                QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + list[3]
+                               + ".txt";
+                QFile file(path);
+                QSet<QString> records;
+                if(file.open(QIODevice::ReadOnly | QIODevice::Text)){
+                     QTextStream in2(&file);
+                    while(!in2.atEnd()){
+                         QString line2=in2.readLine();
+                         QStringList list2 =line2.split(",");
+                         records.insert(list2[list[4].toInt()]);
+                    }
+                    file.close();
+                    if(records.contains(value)){
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        }
+        fkFile.close();
+    }
+    return false;
+}
 void checkIdentity(QString tableName){
     QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";

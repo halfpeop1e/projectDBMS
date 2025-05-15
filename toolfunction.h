@@ -14,7 +14,9 @@ QStringList readKeysInfor(const QStringList info,int& primaryNums);
 void showHelp();
 bool ensureDirExists(const QString &path);
 void setOutputShell(QTextBrowser *shell);
+bool checkDeletePK(QString tablename,int index,QString value);
 void checkIdentity(QString tableName);
+bool checkInsertPK(QString tablename,int index,QString value);
 void print(const QString &msg);
 QString formatAsTable(const QStringList &lines);
 } // namespace Utils
