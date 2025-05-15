@@ -265,6 +265,12 @@ void insertInto(const QString &tableName, const QString &values)
                             Utils::print("[!] 自增约束无法插入值"+cols[i].toUpper());
                             return;
                         }
+                        if(colsKeys[i].contains("7")){
+                            if(!Utils::checkInsertPK(tableName,i,keyValue[1])){
+                                Utils::print("[!] 外键约束无法插入值"+cols[i].toUpper());
+                                return;
+                            }
+                        }
                         if(keyValue[1].toUpper()=="NULL"){
                             keyValue[1]="NULL";
                         }
@@ -373,6 +379,12 @@ void insertInto(const QString &tableName, const QString &values)
                 if(colsKeys[i].contains("5")){
                     rowData << QString::number(identityValue+1);
                     continue;
+                }
+                if(colsKeys[i].contains("7")){
+                    if(!Utils::checkInsertPK(tableName,i,inValues[insertNums])){
+                        Utils::print("[!] 外键约束无法插入值"+cols[i].toUpper());
+                        return;
+                    }
                 }
                 if(inValues[insertNums].toUpper()=="NULL"){
                     inValues[insertNums]="NULL";
@@ -861,8 +873,24 @@ void deleteFrom(const QString &tableName, const QString &condition)
 
         return;
     }
+    QStringList FK;
+    QString path2 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/DATATYPE/" + tableName
+                   + "_data.txt";
     QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
                    + ".txt";
+    QFile file2(path2);
+    if (file2.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QTextStream in(&file2);
+        in.readLine();
+        QString secondline=in.readLine();
+        QStringList colsKeys = secondline.split(",");
+        for(int i=0;i<colsKeys.size();i++){
+            if(colsKeys[i].contains("8")){
+                FK << QString::number(i);
+            }
+        }
+        file2.close();
+    }
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return;
@@ -891,6 +919,13 @@ void deleteFrom(const QString &tableName, const QString &condition)
         QStringList values = line.split(',');
         if (values.value(idx) != colValue) {
             lines.append(line);
+        }else{
+            for(int i=0;i<FK.size();i++){
+                if(Utils::checkDeletePK(tableName,FK[i].toInt(),values[FK[i].toInt()])){
+                    Utils::print("[!] 已有外键引用，删除失败\n");
+                    return;
+                }
+            }
         }
     }
     file.close();
@@ -915,27 +950,38 @@ void fkConstraint(QString fkName,QString tablename,QString proTablename,QString 
     if(proFile.open(QIODevice::ReadOnly | QIODevice::Text)){
         QTextStream in(&proFile);
         QString firstline=in.readLine();
-        QStringList colsName = firstline.split(",");
+        QStringList colsName = firstline.split(",",Qt::SkipEmptyParts);
         proIndex =colsName.indexOf(ProColname);
+        if(proIndex==-1){
+            Utils::print("[!] 未找到列名\n");
+            return;
+        }
+        qDebug()<<"idpdex="+QString::number(proIndex);
         while(!in.atEnd()){
             QString restline=in.readLine();
-            QStringList restCol =restline.split(",");
+            if(restline.isEmpty()){
+                break;
+            }
+            QStringList restCol =restline.split(",",Qt::SkipEmptyParts);
             proValues.insert(restCol[proIndex]);
         }
         proFile.close();
     }
-
     QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +  tablename
                       +  ".txt";
     QFile file(path);
     if(file.open(QIODevice::ReadOnly | QIODevice::Text)){
         QTextStream in(&file);
         QString firstline=in.readLine();
-        QStringList colsName = firstline.split(",");
+        QStringList colsName = firstline.split(",",Qt::SkipEmptyParts);
         index =colsName.indexOf(colname);
+         qDebug()<<"iddex="+QString::number(index);
         while (!in.atEnd()) {
             QString restline=in.readLine();
-            QStringList restCol =restline.split(",");
+            if(restline.isEmpty()){
+                break;
+            }
+            QStringList restCol =restline.split(",",Qt::SkipEmptyParts);
             if(!proValues.contains(restCol[index])){
                 Utils::print("[!] 无法为这2组数据添加外键 \n");
                 file.close();
@@ -944,7 +990,6 @@ void fkConstraint(QString fkName,QString tablename,QString proTablename,QString 
         }
         file.close();
     }
-
     QString ProPath2 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE/"+  proTablename
                       + "_data.txt";
     QFile proFile2(ProPath2);{
@@ -953,14 +998,14 @@ void fkConstraint(QString fkName,QString tablename,QString proTablename,QString 
             QTextStream in(&proFile2);
             content<<in.readLine();
             QString line2=in.readLine();
-            QStringList cols2=line2.split(",");
+            QStringList cols2=line2.split(",",Qt::SkipEmptyParts);
             if(!cols2[proIndex].contains("1")&&!cols2[proIndex].contains("3")){
                 Utils::print("[!] 只能将主键或不重复约束的键设为外键 \n");
                 proFile2.close();
                 return;
             }
             cols2[proIndex]+="8";
-            content << cols2.join("n");
+            content << cols2.join(",");
             content << in.readLine();
             proFile2.resize(0);
             proFile2.seek(0);
@@ -978,14 +1023,9 @@ void fkConstraint(QString fkName,QString tablename,QString proTablename,QString 
             QTextStream in(&file2);
             content<<in.readLine();
             QString line2=in.readLine();
-            QStringList cols2=line2.split(",");
-            if(!cols2[index].contains("1")&&!cols2[index].contains("3")){
-                Utils::print("[!] 只能将主键或不重复约束的键设为外键 \n");
-                file2.close();
-                return;
-            }
+            QStringList cols2=line2.split(",",Qt::SkipEmptyParts);
             cols2[index]+="7";
-            content << cols2.join("n");
+            content << cols2.join(",");
             content << in.readLine();
             file2.resize(0);
             file2.seek(0);
