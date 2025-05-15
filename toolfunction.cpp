@@ -118,16 +118,16 @@ QStringList readKeysInfor(const QStringList info,int& primaryNums){
                 return {"error",""};
             }
         }
-        if(keys.contains('1')&&keys.contains('4')){
-            QTextStream cout(stdout);
-            qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
-            Utils::print("[!] Error key conflict: "+info[0]+"主键和default约束冲突 \n");
-            return {"error",""};
-        }
+        // if(keys.contains('1')&&keys.contains('4')){
+        //     QTextStream cout(stdout);
+        //     qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
+        //     Utils::print("[!] Error key conflict: "+info[0]+"主键和default约束冲突 \n");
+        //     return {"error",""};
+        // }
         if(keys.contains('4')&&keys.contains('5')){
             QTextStream cout(stdout);
             qDebug()<<"[!] Error key conflict: "+info[0]+"\n";
-            Utils::print("[!] Error key conflict: "+info[0]+"主键和自增约束冲突 \n");
+            Utils::print("[!] Error key conflict: "+info[0]+"默认和自增约束冲突 \n");
             return {"error",""};
         }
         if(keys.contains('1')&&keys.contains('2')){
@@ -252,7 +252,7 @@ QString getDefaultValue(const QString type){
         return " ";
     }
     if(colType=="DATE"){
-        return "2025-5-14";
+        return "2025-05-14";
     }
     if(colType=="FLOAT"||colType=="DOUBLE"){
         return "0.0";
