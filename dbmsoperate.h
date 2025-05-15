@@ -13,6 +13,7 @@ void selectAdvanced(const QString &command);
 void selectAdvancedInternal(const QString &query, QStringList &result);
 void deleteFrom(const QString &tableName, const QString &condition);
 void headerManage(const QString command);
+void fkConstraint(QString fkName,QString tablename,QString proTablename,QString colname,QString ProColname);
 bool updateRecord(const QString& tableName, const QMap<QString, QString>& updates, const QString& whereClause);
 class IndexManager {
 public:
