@@ -13,12 +13,15 @@
 QString fastlink;
 QString fastfilename;
 QString fastdbname;
+QString fastkey;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 
 {
     ui->setupUi(this);
+    connect(ui->tableWidget, &QTableWidget::cellClicked,
+            this, &MainWindow::on_tableWidget_cellClicked);
     model = new QFileSystemModel(this);
     model->setRootPath("");
     ui->treeView->setModel(model);
@@ -32,6 +35,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->savetable->hide();
     ui->typecombo->hide();
     ui->addcol->hide();
+    ui->groupBox->hide();
+    ui->alter->hide();
     QString Welcomemessage=R"(
 ##############################################
           _____  ____  __  __  _____
@@ -287,19 +292,22 @@ void MainWindow::loadTxtAsTable(const QString& filePath) {
     int rowCount = lines.size();
     if (rowCount == 0) return;
 
-    QStringList firstRow = lines[0].split(",", Qt::SkipEmptyParts);
+    QStringList firstRow = lines[0].split(",");
     int columnCount = firstRow.size();
 
     ui->tableWidget->setRowCount(rowCount);
     ui->tableWidget->setColumnCount(columnCount);
 
     for (int i = 0; i < rowCount; ++i) {
-        QStringList values = lines[i].split(",", Qt::SkipEmptyParts);
-        for (int j = 0; j < values.size(); ++j) {
-            QTableWidgetItem* item = new QTableWidgetItem(values[j].trimmed());
+        QStringList values = lines[i].split(",");
+        for (int j = 0; j < columnCount; ++j) {
+            QString value = (j < values.size()) ? values[j].trimmed() : "";
+            QTableWidgetItem* item = new QTableWidgetItem(value);
+            item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
             ui->tableWidget->setItem(i, j, item);
         }
     }
+
 
     file.close();
 }
@@ -428,6 +436,7 @@ void MainWindow::on_opentable_clicked()
 {
     QString showfile= dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + fastfilename + ".txt";
     currentpath=showfile;
+     ui->contentdisplay->hide();
     ui->tableWidget->show();
     ui->addrow->show();
     ui->addcol->show();
@@ -444,6 +453,8 @@ void MainWindow::on_closetable_clicked()
     ui->addcol->hide();
     ui->savetable->hide();
     ui->typecombo->hide();
+     ui->groupBox->hide();
+     ui->contentdisplay->show();
 }
 
 
@@ -469,5 +480,54 @@ void MainWindow::on_addcol_clicked()
 {
     Utils::print("已添加字段，类型"+ui->typecombo->currentText());
     addColumn();
+}
+
+
+void MainWindow::on_tableWidget_cellClicked(int row, int column)
+{
+    ui->alter->show();
+    qDebug() << "点击了单元格，行:" << row << " 列:" << column;
+    QTableWidgetItem *item = ui->tableWidget->item(row, column);
+    if (item) {
+        QString content = item->text();
+        fastkey=content;
+        qDebug() << "Clicked cell content:" << content;
+    }
+}
+
+
+void MainWindow::on_alter_clicked()
+{
+    ui->groupBox->show();
+}
+
+
+
+
+
+void MainWindow::on_checkBox_stateChanged(int arg1)
+{
+    if (arg1== Qt::Unchecked) {
+        fastkey="";
+    }
+     else if (arg1 == Qt::Checked) {
+        fastkey="ALTER TABLE "+fastfilename+ " MODIFY PRIMARY KEY "+fastkey;
+    }
+}
+
+
+void MainWindow::on_c1_clicked()
+{
+    Utils::setOutputShell(ui->shell);
+    Interpreter::interpret(fastkey);
+    fastkey="";
+    ui->groupBox->hide();
+}
+
+
+void MainWindow::on_c2_clicked()
+{
+
+    ui->groupBox->hide();
 }
 

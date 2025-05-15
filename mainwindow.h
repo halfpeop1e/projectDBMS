@@ -61,6 +61,18 @@ private slots:
 
     void on_addcol_clicked();
 
+    void on_tableWidget_cellClicked(int row, int column);
+
+    void on_alter_clicked();
+
+
+
+    void on_checkBox_stateChanged(int arg1);
+
+    void on_c1_clicked();
+
+    void on_c2_clicked();
+
 private:
     Ui::MainWindow *ui;
     QFileSystemModel *model;

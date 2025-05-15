@@ -1088,6 +1088,61 @@ void headerManage(const QString command){
         if (!file2.open(QIODevice::ReadWrite | QIODevice::Text)) {
             qDebug() << "Failed to open file:" << path2 << "Error:" << file2.errorString();
         }                                                              //添加
+        //新增对 MODIFY PRIMARY KEY 的处理
+        if (operation.toUpper() == "MODIFY" &&
+            columnName.toUpper() == "PRIMARY" &&
+            extraInfo.toUpper().startsWith("KEY")) {
+
+            QStringList parts = extraInfo.split(" ", Qt::SkipEmptyParts);
+            if (parts.size() < 2) {
+                Utils::print("[!] MODIFY PRIMARY KEY 语法错误，缺少字段名\n");
+                return;
+            }
+
+            QString newPrimaryKey = parts[1];
+
+            // 读取表文件第一行：字段名列表
+            QTextStream in(&file);
+            QString headerLine = in.readLine();
+            QStringList headers = headerLine.split(",", Qt::SkipEmptyParts);
+            int pkIndex = headers.indexOf(newPrimaryKey);
+            if (pkIndex == -1) {
+                Utils::print("[!] 指定的主键字段不存在: " + newPrimaryKey + "\n");
+                return;
+            }
+
+            // 读取数据类型文件的三行
+            QTextStream in2(&file2);
+            QString typeLine = in2.readLine();
+            QString statusLine = in2.readLine();
+            QString defaultLine = in2.readLine();
+
+            QStringList statusList = statusLine.split(",", Qt::SkipEmptyParts);
+            if (statusList.size() != headers.size()) {
+                Utils::print("[!] 字段状态长度与字段数不匹配\n");
+                return;
+            }
+
+            // 设置指定列为主键（1），其余为 0
+            for (int i = 0; i < statusList.size(); ++i)
+                statusList[i] = (i == pkIndex ? "1" : "0");
+
+            // 回写文件
+            file2.resize(0);
+            file2.seek(0);
+            QTextStream out2(&file2);
+            out2 << typeLine << "\n";
+            out2 << statusList.join(",") << "\n";
+            out2 << defaultLine << "\n";
+
+            file.close();
+            file2.close();
+
+            Utils::print("[+] 主键已修改为: " + newPrimaryKey + "\n");
+            Utils::writeLog("Alter table: " + tableName + " MODIFY PRIMARY KEY " + newPrimaryKey);
+            return;
+        }
+
         if (operation.toUpper() == "ADD") {
             if(extraInfo.isEmpty()){
                 qDebug() << "Error: need more information";
@@ -1378,7 +1433,7 @@ void headerManage(const QString command){
         Utils::print("更改了表: " + tableName + operation + columnName +extraInfo);
         Utils::writeLog("Alter table: " + tableName + operation + columnName +extraInfo);
     }else {
-        qDebug() << "Invalid ALTER TABLE syntax";
+        Utils::print("Invalid ALTER TABLE syntax");
     }
 }
 IndexManager::IndexManager(const QString& user, const QString& db)
