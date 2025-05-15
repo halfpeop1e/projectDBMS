@@ -259,6 +259,53 @@ QString getDefaultValue(const QString type){
     }
     return " ";
 }
+void checkIdentity(QString tableName){
+    QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName
+                   + ".txt";
+    QString path2 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" +"DATATYPE/"+tableName
+                    + "_data.txt";
+    QFile file2(path2);
+    QStringList colsKeys;
+    QSet<int> indentityIdex;
+    int identityValue=0;
+    if (file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file2);
+        in.readLine();
+        QString secondline=in.readLine();
+        colsKeys = secondline.split(",");
+        for(int i=0;i<colsKeys.size();i++){
+            if(colsKeys[i].contains("5")){
+                indentityIdex.insert(i);
+            }
+        }
+        file2.close();
+    }
+    if(indentityIdex.empty()){
+        return;
+    }
+    QFile file(path);
+    QStringList outRes;
+    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        QTextStream in(&file);
+        QTextStream out(&file);
+        outRes << in.readLine();
+        while (!in.atEnd()){
+            identityValue++;
+            QString getLine=in.readLine();
+            QStringList contends=getLine.split(",");
+            for(int col=0;col<contends.size();col++){
+                if(indentityIdex.contains(col)){
+                    contends[col]=QString::number(identityValue);
+                }
+            }
+            outRes << contends.join(",");
+        }
+        file.resize(0);
+        file.seek(0);
+        out << outRes.join('\n');
+        file.close();
+    }
+}
 void showHelp()
 {
     QTextStream cout(stdout);

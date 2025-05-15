@@ -903,6 +903,7 @@ void deleteFrom(const QString &tableName, const QString &condition)
     QTextStream cout(stdout);
     Utils::print("于" + tableName +  "删除了对应的项 ''.\n");
     Utils::writeLog("Deleted from " + tableName + " where " + condition);
+    Utils::checkIdentity(tableName);
 }
 void headerManage(const QString command){
 
