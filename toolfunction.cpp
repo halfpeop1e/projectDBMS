@@ -413,6 +413,8 @@ void showHelp()
 17."CREATE INDEX <BTREE|HASH> ON <table>(<column>)'";
  "                         -- 为表某列创建 BTREE 或 HASH 索引";
 18."DROP INDEX <table>.<column>      -- 删除某列上的索引";
+19.BACKUP DATABASE <dbname> <PATH>
+20.RESTORE DATABASE <dbname> <PATH>
 
  "=======================================)");
 }

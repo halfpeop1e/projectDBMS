@@ -545,6 +545,21 @@ void selectFrom(const QString &tableName)
         Utils::writeLog("Selected from " + tableName);
     }
 }
+int findFieldIndex(const QStringList &header, const QString &fieldName, bool &ambiguous) {
+    int index = -1;
+    int count = 0;
+
+    for (int i = 0; i < header.size(); ++i) {
+        QString h = header[i].trimmed();
+        if (h == fieldName || h.endsWith("." + fieldName)) {
+            index = i;
+            ++count;
+        }
+    }
+
+    ambiguous = (count > 1);
+    return index;
+}
 void selectAdvancedInternal(const QString &query, QStringList &result)
 {
     QRegularExpression re(
@@ -571,9 +586,8 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
 
     // ===== 读取表数据或执行 JOIN =====
     if (!joinTable.isEmpty()) {
-        QString path1 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
-        QString path2 = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + joinTable + ".txt";
-        QFile file1(path1), file2(path2);
+        QFile file1(dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt");
+        QFile file2(dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + joinTable + ".txt");
         if (!file1.open(QIODevice::ReadOnly | QIODevice::Text) || !file2.open(QIODevice::ReadOnly | QIODevice::Text)) {
             Utils::print("[!] 打开用于 JOIN 的表失败.");
             return;
@@ -583,217 +597,174 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         QStringList header1 = in1.readLine().split(",");
         QStringList header2 = in2.readLine().split(",");
         QList<QStringList> rows1, rows2;
-
         while (!in1.atEnd()) rows1.append(in1.readLine().split(","));
         while (!in2.atEnd()) rows2.append(in2.readLine().split(","));
 
         int idx1 = header1.indexOf(leftField);
         int idx2 = header2.indexOf(rightField);
 
-        // 添加前缀防止字段重复
         QStringList joinedHeader;
         for (const QString &h : header1) joinedHeader.append(table1 + "." + h);
         for (const QString &h : header2) joinedHeader.append(joinTable + "." + h);
-
         rawLines.append(joinedHeader.join(","));
 
         for (const QStringList &r1 : rows1) {
             for (const QStringList &r2 : rows2) {
                 if (idx1 >= 0 && idx2 >= 0 && r1.value(idx1) == r2.value(idx2)) {
-                    QStringList joinedRow = r1 + r2;
-                    rawLines.append(joinedRow.join(","));
+                    rawLines.append((r1 + r2).join(","));
                 }
             }
         }
     } else {
-        QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
-        QFile file(path);
+        QFile file(dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt");
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             Utils::print("[!] 无法打开表文件.");
             return;
         }
-
         QTextStream in(&file);
-        QString header = in.readLine();
-        rawLines.append(header);
-        while (!in.atEnd()) {
-            rawLines.append(in.readLine());
-        }
+        rawLines.append(in.readLine());
+        while (!in.atEnd()) rawLines.append(in.readLine());
     }
 
-    // ===== 使用索引优化 WHERE =====
+    // ===== WHERE 子句处理 =====
     if (!whereClause.isEmpty()) {
         QStringList filtered;
         QString headerLine = rawLines.takeFirst();
-        QStringList header = headerLine.split(",", Qt::KeepEmptyParts);
-        filtered.append(headerLine);  // 保留表头
+        QStringList header = headerLine.split(",");
+        filtered.append(headerLine);
 
-        QString col, val;
         QRegularExpression re(R"((\w+)\s*(<=|>=|=|<|>)\s*(.+))");
-        QRegularExpressionMatch match = re.match(whereClause.trimmed());
-        IndexManager idxMgr(currentUser, usingDatabase);
-        QString path = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt";
-        QFile tableFile(path);
-        if (match.hasMatch()) {
-            col = match.captured(1).trimmed();
-            QString op = match.captured(2).trimmed();
-            val = match.captured(3).trimmed();
-
-            int index = header.indexOf(col);
+        QRegularExpressionMatch m = re.match(whereClause);
+        if (m.hasMatch()) {
+            QString col = m.captured(1).trimmed(), op = m.captured(2), val = m.captured(3).trimmed();
+            bool ambiguous = false;
+            int index = findFieldIndex(header, col, ambiguous);
+            if (ambiguous) {
+                Utils::print("[!] WHERE 字段不唯一，请加前缀: " + col); return;
+            }
             if (index == -1) {
-                qWarning() << "Column not found:" << col;
-            } else {
-                // 判断选中的字段列表
-                QStringList wantedFields;
-                if (fieldsStr.trimmed() == "*") {
-                    wantedFields = header;
-                } else {
-                    wantedFields = fieldsStr.split(",", Qt::SkipEmptyParts);
-                    for (QString &f : wantedFields)
-                        f = f.trimmed();
-                }
+                Utils::print("[!] WHERE 字段未找到: " + col); return;
+            }
+            IndexManager indexManager(currentUser, usingDatabase);
+            if (op == "=" && indexManager.indexExists(table1, col)) {
+                QVector<qint64> offsets = indexManager.queryWithIndex(table1, col, val);
 
+                QFile tableFile(dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + table1 + ".txt");
+                if (tableFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                    QTextStream in(&tableFile);
 
-                    for (const QString &line : rawLines) {
-                        QStringList fields = line.split(",", Qt::KeepEmptyParts);
-                        QString fieldVal = fields.value(index).trimmed();
+                    for (qint64 offset : offsets) {
+                        tableFile.seek(offset);
+                        QString line = in.readLine().trimmed();
 
-                        // 数值/字符串判断
-                        bool ok1, ok2;
-                        double fieldNum = fieldVal.toDouble(&ok1);
-                        double valNum = val.toDouble(&ok2);
+                        qDebug() << "Read from offset" << offset << ":" << line;
 
-                        bool matched = false;
-                        if (ok1 && ok2) {
-                            if (op == "=")
-                                matched = (fieldNum == valNum);
-                            else if (op == "<")
-                                matched = (fieldNum < valNum);
-                            else if (op == ">")
-                                matched = (fieldNum > valNum);
-                            else if (op == "<=")
-                                matched = (fieldNum <= valNum);
-                            else if (op == ">=")
-                                matched = (fieldNum >= valNum);
-                        } else {
-                            if (op == "=")
-                                matched = (fieldVal == val);
-                            else if (op == "<")
-                                matched = (fieldVal < val);
-                            else if (op == ">")
-                                matched = (fieldVal > val);
-                            else if (op == "<=")
-                                matched = (fieldVal <= val);
-                            else if (op == ">=")
-                                matched = (fieldVal >= val);
-                        }
-
-                        if (matched) {
-                            QStringList selectedFields;
-                            for (const QString &wanted : wantedFields) {
-                                int idx = header.indexOf(wanted);
-                                if (idx != -1 && idx < fields.size()) {
-                                    selectedFields.append(fields.value(idx));
-                                } else {
-                                    selectedFields.append("");  // 防止越界或缺字段
-                                }
-                            }
-                            filtered.append(selectedFields.join(","));
+                        if (!line.isEmpty()) {
+                            filtered.append(line);
                         }
                     }
 
-            }
-        }
+                    tableFile.close();
+                    rawLines = filtered;
 
-        rawLines = filtered;
+                }
+
+            }
+            else
+            {
+                for (const QString &line : rawLines) {
+                    QStringList fields = line.split(",");
+                    QString fieldVal = fields.value(index).trimmed();
+                    bool ok1, ok2;
+                    double fNum = fieldVal.toDouble(&ok1), vNum = val.toDouble(&ok2);
+                    bool match = false;
+                    if (ok1 && ok2) {
+                        if (op == "=") match = (fNum == vNum);
+                        else if (op == "<") match = (fNum < vNum);
+                        else if (op == ">") match = (fNum > vNum);
+                        else if (op == "<=") match = (fNum <= vNum);
+                        else if (op == ">=") match = (fNum >= vNum);
+                    } else {
+                        if (op == "=") match = (fieldVal == val);
+                        else if (op == "<") match = (fieldVal < val);
+                        else if (op == ">") match = (fieldVal > val);
+                        else if (op == "<=") match = (fieldVal <= val);
+                        else if (op == ">=") match = (fieldVal >= val);
+                    }
+                    if (match) filtered.append(line);
+                }
+            }
+            rawLines = filtered;
+        }
     }
 
-
-    if (fieldsStr.contains("COUNT") || fieldsStr.contains("SUM") || fieldsStr.contains("AVG") || fieldsStr.contains("MIN") || fieldsStr.contains("MAX")) {
+    // ===== 聚合函数 =====
+    if (fieldsStr.contains("COUNT") || fieldsStr.contains("SUM") || fieldsStr.contains("AVG") ||
+        fieldsStr.contains("MIN") || fieldsStr.contains("MAX")) {
         QRegularExpression aggRe(R"((COUNT|SUM|AVG|MIN|MAX)\s*\((\w+|\*)\))");
         QRegularExpressionMatch aggMatch = aggRe.match(fieldsStr);
-
         if (aggMatch.hasMatch()) {
-            QString func = aggMatch.captured(1); // 聚合函数名称
-            QString field = aggMatch.captured(2); // 聚合字段
+            QString func = aggMatch.captured(1), field = aggMatch.captured(2);
+            QStringList header = rawLines.first().split(",");
+            int fieldIndex = -1;
+            bool ambiguous = false;
+            if (field != "*") fieldIndex = findFieldIndex(header, field, ambiguous);
+            if (ambiguous) { Utils::print("[!] 聚合字段不唯一: " + field); return; }
+            if (fieldIndex == -1 && field != "*") { Utils::print("[!] 聚合字段未找到: " + field); return; }
 
             double resultValue = 0;
             int count = 0;
-            if (field == "*") { // COUNT(*)
-                resultValue = rawLines.size();
-            } else {
-                int fieldIndex = rawLines.first().split(",").indexOf(field);
-                if (fieldIndex == -1) {
-                    Utils::print("[!] 找不到字段: " + field);
-                    return;
+            for (int i = 1; i < rawLines.size(); ++i) {
+                QStringList fields = rawLines[i].split(",");
+                if (field == "*") {
+                    count++;
+                    continue;
                 }
-
-                for (const QString &line : rawLines) {
-                    QStringList fields = line.split(",");
-                    QString fieldValue = fields.at(fieldIndex).trimmed();
-                    bool ok;
-                    double numValue = fieldValue.toDouble(&ok);
-                    if (ok) {
-                        if (func == "SUM") {
-                            resultValue += numValue;
-                        } else if (func == "AVG") {
-                            resultValue += numValue;
-                            count++;
-                        } else if (func == "MIN") {
-                            if (count == 0 || numValue < resultValue) {
-                                resultValue = numValue;
-                            }
-                            count++;
-                        } else if (func == "MAX") {
-                            if (count == 0 || numValue > resultValue) {
-                                resultValue = numValue;
-                            }
-                            count++;
-                        }
-                    }
-                }
+                QString val = fields.value(fieldIndex).trimmed();
+                bool ok;
+                double num = val.toDouble(&ok);
+                if (!ok) continue;
+                if (func == "SUM" || func == "AVG") resultValue += num;
+                if (func == "MIN" && (count == 0 || num < resultValue)) resultValue = num;
+                if (func == "MAX" && (count == 0 || num > resultValue)) resultValue = num;
+                count++;
             }
-
-            if (func == "AVG" && count > 0) {
-                resultValue /= count; // 计算平均值
-            }
-
+            if (func == "AVG" && count > 0) resultValue /= count;
+            if (func == "COUNT") resultValue = count;
             result.append(QString::number(resultValue));
             return;
         }
     }
 
-    // ===== ORDER BY（升序）=====
+    // ===== ORDER BY 子句处理 =====
     if (!orderByClause.isEmpty()) {
         QString headerLine = rawLines.takeFirst();
         QStringList header = headerLine.split(",");
-        int sortIdx = header.indexOf(orderByClause);
-        if (sortIdx == -1) {
-            Utils::print("[!] ORDER BY 字段未找到: " + orderByClause);
-        } else {
+        bool ambiguous = false;
+        int sortIdx = findFieldIndex(header, orderByClause.trimmed(), ambiguous);
+        if (ambiguous) Utils::print("[!] ORDER BY 字段不唯一: " + orderByClause);
+        if (sortIdx == -1) Utils::print("[!] ORDER BY 字段未找到: " + orderByClause);
+        else {
             std::sort(rawLines.begin(), rawLines.end(), [sortIdx](const QString &a, const QString &b) {
                 return a.split(",").value(sortIdx) < b.split(",").value(sortIdx);
             });
-            rawLines.prepend(headerLine);
         }
+        rawLines.prepend(headerLine);
     }
 
     // ===== 字段选择 =====
     QStringList header = rawLines.first().split(",");
     QList<int> selectedIndexes;
     if (fieldsStr == "*") {
-        for (int i = 0; i < header.size(); ++i)
-            selectedIndexes.append(i);
+        for (int i = 0; i < header.size(); ++i) selectedIndexes.append(i);
     } else {
         QStringList wanted = fieldsStr.split(",");
         for (QString col : wanted) {
             col = col.trimmed();
-            if (col.contains(".")) col = col.section('.', 1); // 去掉前缀
-            int index = header.indexOf(QRegularExpression("(^|\\.)" + QRegularExpression::escape(col) + "$"));
-            if (index == -1) {
-                Utils::print("[!] 字段未找到: " + col);
-                continue;
-            }
+            bool ambiguous = false;
+            int index = findFieldIndex(header, col, ambiguous);
+            if (ambiguous) { Utils::print("[!] 字段不唯一，请使用前缀: " + col); continue; }
+            if (index == -1) { Utils::print("[!] 字段未找到: " + col); continue; }
             selectedIndexes.append(index);
         }
     }
@@ -803,12 +774,11 @@ void selectAdvancedInternal(const QString &query, QStringList &result)
         QStringList out;
         for (int idx : selectedIndexes) {
             QString val = fields.value(idx).trimmed();
-            out.append(val.isEmpty() ? " " : val);  // 空值改成空格
+            out.append(val.isEmpty() ? " " : val);
         }
         result.append(out.join(","));
     }
 }
-
 void selectAdvanced(const QString &command)
 {
     if (usingDatabase.isEmpty()) {
@@ -854,7 +824,6 @@ void selectAdvanced(const QString &command)
         // 输出所有结果
         Utils::print("==== UNION RESULT ====");
         Utils::print(Utils::formatAsTable(allResults));
-        return;
         return;
     }
 
@@ -1470,58 +1439,77 @@ bool IndexManager::createIndex(const QString& tableName, const QString& columnNa
 bool IndexManager::buildIndex(const QString& tableName, const QString& columnName, const QString& indexType) {
     QString tablePath = dbRoot + "/" + currentUser + "/" + usingDatabase + "/" + tableName + ".txt";
     QFile tableFile(tablePath);
-
-    if (!tableFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!tableFile.open(QIODevice::ReadOnly)) {
+        Utils::print("[!] 无法打开数据文件");
         return false;
     }
 
-    QTextStream in(&tableFile);
-    QStringList headers = in.readLine().split(",");
+    QByteArray headerLine = tableFile.readLine();
+    QStringList headers = QString::fromUtf8(headerLine).split(",");
     int columnIndex = headers.indexOf(columnName);
-
     if (columnIndex == -1) {
-        Utils::print("[!] 表中未发现字段");
+        Utils::print("[!] 表中未找到字段 " + columnName);
         return false;
     }
 
     QString indexPath = getIndexPath(tableName, columnName);
     QFile indexFile(indexPath);
-
     if (!indexFile.open(QIODevice::Append | QIODevice::Text)) {
+        Utils::print("[!] 无法写入索引文件");
         return false;
     }
 
     QTextStream out(&indexFile);
+    QMap<QString, QVector<qint64>> indexMap;
 
-    while (!in.atEnd()) {
-        qint64 lineOffset = tableFile.pos();
-        QString line = in.readLine();
+    while (!tableFile.atEnd()) {
+        qint64 offset = tableFile.pos();  // 放在读取之前
+        QByteArray lineData = tableFile.readLine();
+        QString line = QString::fromUtf8(lineData);
+        if (line.trimmed().isEmpty()) continue;
+
         QStringList values = line.split(",");
         if (values.size() <= columnIndex) continue;
+
         QString key = values[columnIndex].trimmed();
-        out << key << ":" << lineOffset << "\n";
+        indexMap[key].append(offset);
     }
 
-    indexFile.close();
+    for (auto it = indexMap.begin(); it != indexMap.end(); ++it) {
+        for (qint64 offset : it.value()) {
+            out << it.key() << ":" << offset << "\n";
+        }
+    }
+
     tableFile.close();
-    Utils::print("[+] 成功创建索引");
+    indexFile.close();
+    Utils::print("[+] 成功创建 B 树风格索引（QMap）");
+
     return true;
 }
+
 
 QVector<qint64> IndexManager::queryWithIndex(const QString& tableName, const QString& columnName, const QString& key) {
     QVector<qint64> results;
     QString indexPath = getIndexPath(tableName, columnName);
     QFile indexFile(indexPath);
-
     if (!indexFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        Utils::print("[!] 无法打开索引文件: " + indexPath);
         return results;
     }
 
-    indexFile.readLine();
-    while (!indexFile.atEnd()) {
-        QString line = indexFile.readLine();
+    QTextStream in(&indexFile);
+    // 跳过前三行元信息
+    for (int i = 0; i < 3; i++) in.readLine();
+
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty()) continue;
+
         QStringList parts = line.split(":");
-        if (parts.size() == 2 && parts[0].trimmed() == key) {
+        if (parts.size() != 2) continue;
+
+        if (parts[0].trimmed() == key) {
             results.append(parts[1].trimmed().toLongLong());
         }
     }
@@ -1529,6 +1517,8 @@ QVector<qint64> IndexManager::queryWithIndex(const QString& tableName, const QSt
     indexFile.close();
     return results;
 }
+
+
 
 bool IndexManager::dropIndex(const QString& tableName, const QString& columnName) {
     QString indexPath = getIndexPath(tableName, columnName);
